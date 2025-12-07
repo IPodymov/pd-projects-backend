@@ -41,6 +41,16 @@ export class User {
 
   @Column({ nullable: true })
   classNumber?: string;
+
+  @Column({ nullable: true })
+  avatarUrl?: string;
+
+  @Column({ nullable: true })
+  githubId?: string;
+
+  @Column({ nullable: true })
+  githubUsername?: string;
+
   @OneToMany(() => Project, (project) => project.owner)
   ownedProjects!: Project[];
 

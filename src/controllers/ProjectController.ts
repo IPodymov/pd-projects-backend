@@ -6,11 +6,40 @@ import { File, FileType } from "../entities/File";
 
 class ProjectController {
   static listAll = async (req: Request, res: Response) => {
+    const userId = res.locals.jwtPayload.userId;
+    const userRepository = AppDataSource.getRepository(User);
     const projectRepository = AppDataSource.getRepository(Project);
-    const projects = await projectRepository.find({
-      relations: ["owner", "members", "files"],
-    });
-    res.send(projects);
+
+    try {
+        const user = await userRepository.findOneOrFail({ where: { id: userId } });
+        
+        let whereClause: any = {};
+
+        // If user is a student, filter by school and class
+        if (user.role === UserRole.STUDENT) {
+            if (user.schoolNumber) {
+                whereClause.schoolNumber = user.schoolNumber;
+            }
+            if (user.classNumber) {
+                whereClause.classNumber = user.classNumber;
+            }
+        } 
+        // If user is a teacher or staff, filter by school
+        else if (user.role === UserRole.TEACHER || user.role === UserRole.UNIVERSITY_STAFF) {
+             if (user.schoolNumber) {
+                whereClause.schoolNumber = user.schoolNumber;
+            }
+        }
+        // Admin sees all (no filter)
+
+        const projects = await projectRepository.find({
+            where: whereClause,
+            relations: ["owner", "members", "files"],
+        });
+        res.send(projects);
+    } catch (error) {
+        res.status(500).send({ message: "Error fetching projects" });
+    }
   };
 
   static getOne = async (req: Request, res: Response) => {
@@ -28,15 +57,22 @@ class ProjectController {
   };
 
   static createProject = async (req: Request, res: Response) => {
-    const { title, description, githubUrl, schoolNumber } = req.body;
+    const { title, description, githubUrl, schoolNumber, classNumber } = req.body;
     const userId = res.locals.jwtPayload.userId;
+    const userRole = res.locals.jwtPayload.role;
 
     const project = new Project();
     project.title = title;
     project.description = description;
     project.githubUrl = githubUrl;
     project.schoolNumber = schoolNumber;
-    project.status = ProjectStatus.PENDING;
+    project.classNumber = classNumber;
+    
+    if (userRole === UserRole.ADMIN || userRole === UserRole.TEACHER || userRole === UserRole.UNIVERSITY_STAFF) {
+        project.status = ProjectStatus.APPROVED;
+    } else {
+        project.status = ProjectStatus.PENDING;
+    }
 
     const userRepository = AppDataSource.getRepository(User);
     const user = await userRepository.findOneBy({ id: userId });

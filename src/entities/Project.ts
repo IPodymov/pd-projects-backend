@@ -41,6 +41,9 @@ export class Project {
   @Column({ nullable: true })
   schoolNumber?: string;
 
+  @Column({ nullable: true })
+  classNumber?: string;
+
   @ManyToOne(() => User, (user) => user.ownedProjects)
   owner!: User;
 

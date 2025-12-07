@@ -10,10 +10,10 @@ const router = Router();
 router.get("/", [checkJwt], ProjectController.listAll);
 router.get("/:id", [checkJwt], ProjectController.getOne);
 
-// Student & Admin
+// Create Project (All roles can create, but status depends on role)
 router.post(
   "/",
-  [checkJwt, checkRole([UserRole.STUDENT, UserRole.ADMIN])],
+  [checkJwt, checkRole([UserRole.STUDENT, UserRole.ADMIN, UserRole.TEACHER, UserRole.UNIVERSITY_STAFF])],
   ProjectController.createProject
 );
 router.post(
