@@ -61,14 +61,16 @@ class AuthController {
       { expiresIn: "1h" }
     );
 
+    const { password: _, ...userWithoutPassword } = user;
+
+    res.cookie("user", JSON.stringify(userWithoutPassword), {
+      maxAge: 3600000,
+      httpOnly: false,
+    });
+
     res.send({
       token,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        name: user.name,
-      },
+      user: userWithoutPassword,
     });
   };
 

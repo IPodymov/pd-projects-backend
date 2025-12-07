@@ -89,8 +89,8 @@ class UserController {
       return;
     }
 
-    if (name) user.name = name;
-    if (email) {
+    if (name !== undefined) user.name = name;
+    if (email !== undefined) {
         // Check if email is taken by another user
         const existingUser = await userRepository.findOne({ where: { email } });
         if (existingUser && existingUser.id !== id) {
@@ -99,7 +99,7 @@ class UserController {
         }
         user.email = email;
     }
-    if (password) {
+    if (password !== undefined) {
         user.password = bcrypt.hashSync(password, 8);
     }
 
@@ -128,6 +128,12 @@ class UserController {
 
     // Return user without password
     const { password: _, ...userWithoutPassword } = user;
+
+    res.cookie("user", JSON.stringify(userWithoutPassword), {
+      maxAge: 3600000,
+      httpOnly: false,
+    });
+
     res.send(userWithoutPassword);
   };
 
@@ -135,8 +141,13 @@ class UserController {
     const id = parseInt(req.params.id);
 
     // Check if user is updating their own avatar or is admin
-    const currentUserId = res.locals.jwtPayload.userId;
+    const currentUserId = parseInt(res.locals.jwtPayload.userId);
     const currentUserRole = res.locals.jwtPayload.role;
+
+    if (isNaN(id)) {
+      res.status(400).send({ message: "Invalid user ID" });
+      return;
+    }
 
     if (id !== currentUserId && currentUserRole !== "admin") {
       res.status(403).send({ message: "Forbidden" });
@@ -157,10 +168,17 @@ class UserController {
       return;
     }
 
-    user.avatarUrl = req.file.path;
+    user.avatarUrl = req.file.path.replace(/\\/g, "/");
     await userRepository.save(user);
 
-    res.send({ message: "Avatar uploaded", avatarUrl: user.avatarUrl });
+    const { password: _, ...userWithoutPassword } = user;
+
+    res.cookie("user", JSON.stringify(userWithoutPassword), {
+      maxAge: 3600000,
+      httpOnly: false,
+    });
+
+    res.send({ message: "Avatar uploaded", avatarUrl: user.avatarUrl, user: userWithoutPassword });
   };
 
   static linkGithub = async (req: Request, res: Response) => {
@@ -212,7 +230,14 @@ class UserController {
 
         await userRepository.save(user);
 
-        res.send({ message: "GitHub profile linked", githubUsername: user.githubUsername });
+        const { password: _, ...userWithoutPassword } = user;
+
+        res.cookie("user", JSON.stringify(userWithoutPassword), {
+            maxAge: 3600000,
+            httpOnly: false,
+        });
+
+        res.send({ message: "GitHub profile linked", githubUsername: user.githubUsername, user: userWithoutPassword });
 
     } catch (error) {
         console.error(error);
