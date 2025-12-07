@@ -3,6 +3,7 @@ import { AppDataSource } from "../data-source";
 import { Project, ProjectStatus } from "../entities/Project";
 import { User, UserRole } from "../entities/User";
 import { File, FileType } from "../entities/File";
+import { ILike } from "typeorm";
 
 class ProjectController {
   static listAll = async (req: Request, res: Response) => {
@@ -18,16 +19,16 @@ class ProjectController {
         // If user is a student, filter by school and class
         if (user.role === UserRole.STUDENT) {
             if (user.schoolNumber) {
-                whereClause.schoolNumber = user.schoolNumber;
+                whereClause.schoolNumber = ILike(user.schoolNumber);
             }
             if (user.classNumber) {
-                whereClause.classNumber = user.classNumber;
+                whereClause.classNumber = ILike(user.classNumber);
             }
         } 
         // If user is a teacher or staff, filter by school
         else if (user.role === UserRole.TEACHER || user.role === UserRole.UNIVERSITY_STAFF) {
              if (user.schoolNumber) {
-                whereClause.schoolNumber = user.schoolNumber;
+                whereClause.schoolNumber = ILike(user.schoolNumber);
             }
         }
         // Admin sees all (no filter)
