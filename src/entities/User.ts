@@ -36,6 +36,11 @@ export class User {
   })
   role!: UserRole;
 
+  @Column()
+  schoolNumber!: string;
+
+  @Column({ nullable: true })
+  classNumber?: string;
   @OneToMany(() => Project, (project) => project.owner)
   ownedProjects!: Project[];
 

@@ -7,8 +7,8 @@ import routes from "./routes";
 import { AppDataSource } from "./data-source";
 import path from "path";
 
-AppDataSource.initialize().then(async () => {
-
+AppDataSource.initialize()
+  .then(async () => {
     // Create express app
     const app = express();
 
@@ -23,7 +23,7 @@ AppDataSource.initialize().then(async () => {
 
     // Start express server
     app.listen(3000, () => {
-        console.log("Server started on port 3000!");
+      console.log("Server started on port 3000!");
     });
-
-}).catch(error => console.log(error));
+  })
+  .catch((error) => console.log(error));

@@ -2,27 +2,27 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from "typeorm";
 import { Project } from "./Project";
 
 export enum FileType {
-    DOCUMENT = "document",
-    PRESENTATION = "presentation"
+  DOCUMENT = "document",
+  PRESENTATION = "presentation",
 }
 
 @Entity()
 export class File {
-    @PrimaryGeneratedColumn()
-    id!: number;
+  @PrimaryGeneratedColumn()
+  id!: number;
 
-    @Column()
-    filename!: string;
+  @Column()
+  filename!: string;
 
-    @Column()
-    path!: string;
+  @Column()
+  path!: string;
 
-    @Column({
-        type: "enum",
-        enum: FileType
-    })
-    type!: FileType;
+  @Column({
+    type: "enum",
+    enum: FileType,
+  })
+  type!: FileType;
 
-    @ManyToOne(() => Project, (project) => project.files, { onDelete: "CASCADE" })
-    project!: Project;
+  @ManyToOne(() => Project, (project) => project.files, { onDelete: "CASCADE" })
+  project!: Project;
 }

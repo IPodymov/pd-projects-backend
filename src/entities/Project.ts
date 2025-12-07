@@ -38,6 +38,9 @@ export class Project {
   @Column({ nullable: true })
   githubUrl?: string;
 
+  @Column({ nullable: true })
+  schoolNumber?: string;
+
   @ManyToOne(() => User, (user) => user.ownedProjects)
   owner!: User;
 
