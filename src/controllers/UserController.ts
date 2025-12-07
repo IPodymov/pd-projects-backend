@@ -3,6 +3,7 @@ import { AppDataSource } from "../data-source";
 import { User, UserRole } from "../entities/User";
 import * as bcrypt from "bcryptjs";
 import axios from "axios";
+import { ILike } from "typeorm";
 
 class UserController {
   static listAll = async (req: Request, res: Response) => {
@@ -11,6 +12,27 @@ class UserController {
       select: ["id", "name", "email", "role"],
     });
     res.send(users);
+  };
+
+  static search = async (req: Request, res: Response) => {
+    const { email } = req.query;
+    if (!email) {
+        res.status(400).send({ message: "Email query parameter is required" });
+        return;
+    }
+
+    const userRepository = AppDataSource.getRepository(User);
+    try {
+        const users = await userRepository.find({
+            where: {
+                email: ILike(`%${email}%`)
+            },
+            select: ["id", "name", "email", "role", "schoolNumber", "classNumber", "avatarUrl"]
+        });
+        res.send(users);
+    } catch (error) {
+        res.status(500).send({ message: "Error searching users" });
+    }
   };
 
   static createUser = async (req: Request, res: Response) => {
