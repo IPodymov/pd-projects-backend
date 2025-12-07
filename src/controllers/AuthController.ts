@@ -125,10 +125,10 @@ class AuthController {
       httpOnly: false,
     });
 
-    res.status(201).send({ 
-        message: "User created",
-        token: jwtToken,
-        user: userWithoutPassword
+    res.status(201).send({
+      message: "User created",
+      token: jwtToken,
+      user: userWithoutPassword,
     });
   };
 }
