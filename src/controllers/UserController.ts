@@ -66,8 +66,13 @@ class UserController {
     const id = parseInt(req.params.id);
     const { name, email, password, schoolNumber, classNumber } = req.body;
     
-    const currentUserId = res.locals.jwtPayload.userId;
+    const currentUserId = parseInt(res.locals.jwtPayload.userId);
     const currentUserRole = res.locals.jwtPayload.role;
+
+    if (isNaN(id)) {
+      res.status(400).send({ message: "Invalid user ID" });
+      return;
+    }
 
     // Allow admin to update anyone, or user to update themselves
     if (id !== currentUserId && currentUserRole !== UserRole.ADMIN) {
