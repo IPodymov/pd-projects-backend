@@ -27,6 +27,13 @@ router.post(
   ProjectController.uploadFile
 );
 
+// Update Project (General update)
+router.patch(
+  "/:id",
+  [checkJwt],
+  ProjectController.updateProject
+);
+
 // Teacher / Staff / Admin
 router.patch(
   "/:id/status",

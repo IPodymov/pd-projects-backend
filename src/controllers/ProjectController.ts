@@ -125,6 +125,64 @@ class ProjectController {
     res.send({ message: "Joined project" });
   };
 
+  static updateProject = async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const { title, description, githubUrl, status } = req.body;
+    const userId = res.locals.jwtPayload.userId;
+    const userRole = res.locals.jwtPayload.role;
+
+    const projectRepository = AppDataSource.getRepository(Project);
+    let project;
+    try {
+      project = await projectRepository.findOneOrFail({ 
+        where: { id },
+        relations: ["owner"] 
+      });
+    } catch (error) {
+      res.status(404).send({ message: "Project not found" });
+      return;
+    }
+
+    const isOwner = project.owner.id === userId;
+    const isAdminOrTeacher = [UserRole.ADMIN, UserRole.TEACHER, UserRole.UNIVERSITY_STAFF].includes(userRole);
+
+    if (!isOwner && !isAdminOrTeacher) {
+        res.status(403).send({ message: "Not authorized" });
+        return;
+    }
+
+    if (title !== undefined) {
+        if (isOwner) project.title = title;
+    }
+    if (description !== undefined) {
+        if (isOwner) project.description = description;
+    }
+    if (githubUrl !== undefined) {
+        if (isOwner) project.githubUrl = githubUrl;
+    }
+
+    if (status !== undefined) {
+        if (!isAdminOrTeacher) {
+             res.status(403).send({ message: "Not authorized to update status" });
+             return;
+        }
+        if (!Object.values(ProjectStatus).includes(status)) {
+            res.status(400).send({ message: "Invalid status" });
+            return;
+        }
+        project.status = status;
+    }
+
+    try {
+      await projectRepository.save(project);
+    } catch (error) {
+      res.status(500).send({ message: "Error updating project" });
+      return;
+    }
+
+    res.send(project);
+  };
+
   static updateStatus = async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
     const { status } = req.body;
