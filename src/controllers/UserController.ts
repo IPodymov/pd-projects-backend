@@ -62,6 +62,70 @@ class UserController {
     res.status(204).send();
   };
 
+  static updateUser = async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const { name, email, password, schoolNumber, classNumber } = req.body;
+    
+    const currentUserId = res.locals.jwtPayload.userId;
+    const currentUserRole = res.locals.jwtPayload.role;
+
+    // Allow admin to update anyone, or user to update themselves
+    if (id !== currentUserId && currentUserRole !== UserRole.ADMIN) {
+      res.status(403).send({ message: "Forbidden" });
+      return;
+    }
+
+    const userRepository = AppDataSource.getRepository(User);
+    let user;
+    try {
+      user = await userRepository.findOneOrFail({ where: { id } });
+    } catch (error) {
+      res.status(404).send({ message: "User not found" });
+      return;
+    }
+
+    if (name) user.name = name;
+    if (email) {
+        // Check if email is taken by another user
+        const existingUser = await userRepository.findOne({ where: { email } });
+        if (existingUser && existingUser.id !== id) {
+            res.status(409).send({ message: "Email already in use" });
+            return;
+        }
+        user.email = email;
+    }
+    if (password) {
+        user.password = bcrypt.hashSync(password, 8);
+    }
+
+    // Role specific updates
+    // If the user being updated is a STUDENT
+    if (user.role === UserRole.STUDENT) {
+        if (schoolNumber !== undefined) user.schoolNumber = schoolNumber;
+        if (classNumber !== undefined) user.classNumber = classNumber;
+    } 
+    // If the user being updated is a TEACHER
+    else if (user.role === UserRole.TEACHER) {
+        if (schoolNumber !== undefined) user.schoolNumber = schoolNumber;
+    }
+    
+    // Admin can force update these fields for any role if needed, 
+    // but strictly speaking they only apply to Student/Teacher.
+    // If Admin is updating a Student/Teacher, the above logic covers it.
+    // If Admin is updating another Admin/Staff, these fields might not be relevant.
+
+    try {
+      await userRepository.save(user);
+    } catch (e) {
+      res.status(500).send({ message: "Error updating user" });
+      return;
+    }
+
+    // Return user without password
+    const { password: _, ...userWithoutPassword } = user;
+    res.send(userWithoutPassword);
+  };
+
   static uploadAvatar = async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
 
