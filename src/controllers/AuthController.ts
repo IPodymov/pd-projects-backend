@@ -112,7 +112,24 @@ class AuthController {
       return;
     }
 
-    res.status(201).send({ message: "User created" });
+    const jwtToken = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || "secret",
+      { expiresIn: "1h" }
+    );
+
+    const { password: _, ...userWithoutPassword } = user;
+
+    res.cookie("user", JSON.stringify(userWithoutPassword), {
+      maxAge: 3600000,
+      httpOnly: false,
+    });
+
+    res.status(201).send({ 
+        message: "User created",
+        token: jwtToken,
+        user: userWithoutPassword
+    });
   };
 }
 
