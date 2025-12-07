@@ -129,6 +129,11 @@ class ProjectController {
     const id = parseInt(req.params.id);
     const { status } = req.body;
 
+    if (!status) {
+        res.status(400).send({ message: "Status is required" });
+        return;
+    }
+
     if (!Object.values(ProjectStatus).includes(status)) {
       res.status(400).send({ message: "Invalid status" });
       return;
@@ -144,7 +149,14 @@ class ProjectController {
     }
 
     project.status = status;
-    await projectRepository.save(project);
+    
+    try {
+        await projectRepository.save(project);
+    } catch (error) {
+        res.status(500).send({ message: "Error updating project status" });
+        return;
+    }
+    
     res.send({ message: "Status updated" });
   };
 
