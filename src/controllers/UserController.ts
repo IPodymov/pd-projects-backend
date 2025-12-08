@@ -4,7 +4,6 @@ import { User, UserRole } from "../entities/User";
 import * as bcrypt from "bcryptjs";
 import axios from "axios";
 import { ILike } from "typeorm";
-import sharp from "sharp";
 
 class UserController {
   static listAll = async (req: Request, res: Response) => {
@@ -18,21 +17,21 @@ class UserController {
   static search = async (req: Request, res: Response) => {
     const { email } = req.query;
     if (!email) {
-        res.status(400).send({ message: "Email query parameter is required" });
-        return;
+      res.status(400).send({ message: "Email query parameter is required" });
+      return;
     }
 
     const userRepository = AppDataSource.getRepository(User);
     try {
-        const users = await userRepository.find({
-            where: {
-                email: ILike(`%${email}%`)
-            },
-            select: ["id", "name", "email", "role", "schoolNumber", "classNumber", "avatarUrl"]
-        });
-        res.send(users);
+      const users = await userRepository.find({
+        where: {
+          email: ILike(`%${email}%`),
+        },
+        select: ["id", "name", "email", "role", "schoolNumber", "classNumber"],
+      });
+      res.send(users);
     } catch (error) {
-        res.status(500).send({ message: "Error searching users" });
+      res.status(500).send({ message: "Error searching users" });
     }
   };
 
@@ -88,7 +87,7 @@ class UserController {
   static updateUser = async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
     const { name, email, password, schoolNumber, classNumber } = req.body;
-    
+
     const currentUserId = parseInt(res.locals.jwtPayload.userId);
     const currentUserRole = res.locals.jwtPayload.role;
 
@@ -114,30 +113,30 @@ class UserController {
 
     if (name !== undefined) user.name = name;
     if (email !== undefined) {
-        // Check if email is taken by another user
-        const existingUser = await userRepository.findOne({ where: { email } });
-        if (existingUser && existingUser.id !== id) {
-            res.status(409).send({ message: "Email already in use" });
-            return;
-        }
-        user.email = email;
+      // Check if email is taken by another user
+      const existingUser = await userRepository.findOne({ where: { email } });
+      if (existingUser && existingUser.id !== id) {
+        res.status(409).send({ message: "Email already in use" });
+        return;
+      }
+      user.email = email;
     }
     if (password !== undefined) {
-        user.password = bcrypt.hashSync(password, 8);
+      user.password = bcrypt.hashSync(password, 8);
     }
 
     // Role specific updates
     // If the user being updated is a STUDENT
     if (user.role === UserRole.STUDENT) {
-        if (schoolNumber !== undefined) user.schoolNumber = schoolNumber;
-        if (classNumber !== undefined) user.classNumber = classNumber;
-    } 
+      if (schoolNumber !== undefined) user.schoolNumber = schoolNumber;
+      if (classNumber !== undefined) user.classNumber = classNumber;
+    }
     // If the user being updated is a TEACHER
     else if (user.role === UserRole.TEACHER) {
-        if (schoolNumber !== undefined) user.schoolNumber = schoolNumber;
+      if (schoolNumber !== undefined) user.schoolNumber = schoolNumber;
     }
-    
-    // Admin can force update these fields for any role if needed, 
+
+    // Admin can force update these fields for any role if needed,
     // but strictly speaking they only apply to Student/Teacher.
     // If Admin is updating a Student/Teacher, the above logic covers it.
     // If Admin is updating another Admin/Staff, these fields might not be relevant.
@@ -160,125 +159,72 @@ class UserController {
     res.send(userWithoutPassword);
   };
 
-  static uploadAvatar = async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id);
-
-    // Check if user is updating their own avatar or is admin
-    const currentUserId = parseInt(res.locals.jwtPayload.userId);
-    const currentUserRole = res.locals.jwtPayload.role;
-
-    if (isNaN(id)) {
-      res.status(400).send({ message: "Invalid user ID" });
-      return;
-    }
-
-    if (id !== currentUserId && currentUserRole !== "admin") {
-      res.status(403).send({ message: "Forbidden" });
-      return;
-    }
-
-    if (!req.file) {
-      res.status(400).send({ message: "No file uploaded" });
-      return;
-    }
-
-    const userRepository = AppDataSource.getRepository(User);
-    let user: User;
-    try {
-      user = await userRepository.findOneOrFail({ where: { id } });
-    } catch (error) {
-      res.status(404).send({ message: "User not found" });
-      return;
-    }
-
-    try {
-      // Compress and resize image
-      const compressedBuffer = await sharp(req.file.buffer)
-        .resize(500, 500, { fit: "cover" })
-        .jpeg({ quality: 80 })
-        .toBuffer();
-      
-      // Convert to base64
-      const base64Image = `data:image/jpeg;base64,${compressedBuffer.toString("base64")}`;
-      user.avatarUrl = base64Image;
-    } catch (error) {
-      res.status(500).send({ message: "Error processing image" });
-      return;
-    }
-
-    await userRepository.save(user);
-
-    const { password: _, ...userWithoutPassword } = user;
-
-    res.cookie("user", JSON.stringify(userWithoutPassword), {
-      maxAge: 3600000,
-      httpOnly: false,
-    });
-
-    res.send({ message: "Avatar uploaded", avatarUrl: user.avatarUrl, user: userWithoutPassword });
-  };
-
   static linkGithub = async (req: Request, res: Response) => {
     const { code } = req.body;
     const userId = res.locals.jwtPayload.userId;
 
     if (!code) {
-        res.status(400).send({ message: "GitHub code is required" });
-        return;
+      res.status(400).send({ message: "GitHub code is required" });
+      return;
     }
 
     try {
-        // Exchange code for access token
-        const tokenResponse = await axios.post(
-            "https://github.com/login/oauth/access_token",
-            {
-                client_id: process.env.GITHUB_CLIENT_ID,
-                client_secret: process.env.GITHUB_CLIENT_SECRET,
-                code,
-            },
-            {
-                headers: { Accept: "application/json" },
-            }
-        );
-
-        const accessToken = tokenResponse.data.access_token;
-        if (!accessToken) {
-            res.status(400).send({ message: "Failed to get access token from GitHub" });
-            return;
+      // Exchange code for access token
+      const tokenResponse = await axios.post(
+        "https://github.com/login/oauth/access_token",
+        {
+          client_id: process.env.GITHUB_CLIENT_ID,
+          client_secret: process.env.GITHUB_CLIENT_SECRET,
+          code,
+        },
+        {
+          headers: { Accept: "application/json" },
         }
+      );
 
-        // Get user info from GitHub
-        const userResponse = await axios.get("https://api.github.com/user", {
-            headers: { Authorization: `token ${accessToken}` },
-        });
+      const accessToken = tokenResponse.data.access_token;
+      if (!accessToken) {
+        res
+          .status(400)
+          .send({ message: "Failed to get access token from GitHub" });
+        return;
+      }
 
-        const githubUser = userResponse.data;
+      // Get user info from GitHub
+      const userResponse = await axios.get("https://api.github.com/user", {
+        headers: { Authorization: `token ${accessToken}` },
+      });
 
-        const userRepository = AppDataSource.getRepository(User);
-        const user = await userRepository.findOneBy({ id: userId });
+      const githubUser = userResponse.data;
 
-        if (!user) {
-            res.status(404).send({ message: "User not found" });
-            return;
-        }
+      const userRepository = AppDataSource.getRepository(User);
+      const user = await userRepository.findOneBy({ id: userId });
 
-        user.githubId = githubUser.id.toString();
-        user.githubUsername = githubUser.login;
+      if (!user) {
+        res.status(404).send({ message: "User not found" });
+        return;
+      }
 
-        await userRepository.save(user);
+      user.githubId = githubUser.id.toString();
+      user.githubUsername = githubUser.login;
 
-        const { password: _, ...userWithoutPassword } = user;
+      await userRepository.save(user);
 
-        res.cookie("user", JSON.stringify(userWithoutPassword), {
-            maxAge: 3600000,
-            httpOnly: false,
-        });
+      const { password: _, ...userWithoutPassword } = user;
 
-        res.send({ message: "GitHub profile linked", githubUsername: user.githubUsername, user: userWithoutPassword });
+      res.cookie("user", JSON.stringify(userWithoutPassword), {
+        maxAge: 3600000,
+        httpOnly: false,
+      });
 
+      res.send({
+        message: "GitHub profile linked",
+        githubUsername: user.githubUsername,
+        user: userWithoutPassword,
+      });
     } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Error linking GitHub profile" });
+      console.error(error);
+      res.status(500).send({ message: "Error linking GitHub profile" });
     }
   };
 }

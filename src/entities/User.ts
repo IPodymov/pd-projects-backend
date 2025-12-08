@@ -42,9 +42,6 @@ export class User {
   @Column({ nullable: true })
   classNumber?: string;
 
-  @Column({ type: "text", nullable: true })
-  avatarUrl?: string;
-
   @Column({ nullable: true })
   githubId?: string;
 
