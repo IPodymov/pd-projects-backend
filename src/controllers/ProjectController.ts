@@ -3,7 +3,7 @@ import { AppDataSource } from "../data-source";
 import { Project, ProjectStatus } from "../entities/Project";
 import { User, UserRole } from "../entities/User";
 import { File, FileType } from "../entities/File";
-import { ILike } from "typeorm";
+import { ILike, Brackets } from "typeorm";
 
 class ProjectController {
   static listAll = async (req: Request, res: Response) => {
@@ -12,34 +12,52 @@ class ProjectController {
     const projectRepository = AppDataSource.getRepository(Project);
 
     try {
-        const user = await userRepository.findOneOrFail({ where: { id: userId } });
-        
-        let whereClause: any = {};
+      const user = await userRepository.findOneOrFail({
+        where: { id: userId },
+      });
 
-        // If user is a student, filter by school and class
-        if (user.role === UserRole.STUDENT) {
-            if (user.schoolNumber) {
-                whereClause.schoolNumber = ILike(user.schoolNumber);
-            }
-            if (user.classNumber) {
-                whereClause.classNumber = ILike(user.classNumber);
-            }
-        } 
-        // If user is a teacher or staff, filter by school
-        else if (user.role === UserRole.TEACHER || user.role === UserRole.UNIVERSITY_STAFF) {
-             if (user.schoolNumber) {
-                whereClause.schoolNumber = ILike(user.schoolNumber);
-            }
+      const query = projectRepository
+        .createQueryBuilder("project")
+        .leftJoinAndSelect("project.owner", "owner")
+        .leftJoinAndSelect("project.members", "members")
+        .leftJoinAndSelect("project.files", "files");
+
+      // If user is a student, filter by school and class
+      if (user.role === UserRole.STUDENT) {
+        if (user.schoolNumber) {
+          query.andWhere("project.schoolNumber ILIKE :schoolNumber", {
+            schoolNumber: user.schoolNumber,
+          });
         }
-        // Admin sees all (no filter)
+        if (user.classNumber) {
+          query.andWhere(
+            new Brackets((qb) => {
+              qb.where("project.classNumber ILIKE :classNumber", {
+                classNumber: user.classNumber,
+              })
+                .orWhere("project.classNumber IS NULL")
+                .orWhere("project.classNumber = ''");
+            })
+          );
+        }
+      }
+      // If user is a teacher or staff, filter by school
+      else if (
+        user.role === UserRole.TEACHER ||
+        user.role === UserRole.UNIVERSITY_STAFF
+      ) {
+        if (user.schoolNumber) {
+          query.andWhere("project.schoolNumber ILIKE :schoolNumber", {
+            schoolNumber: user.schoolNumber,
+          });
+        }
+      }
+      // Admin sees all (no filter)
 
-        const projects = await projectRepository.find({
-            where: whereClause,
-            relations: ["owner", "members", "files"],
-        });
-        res.send(projects);
+      const projects = await query.getMany();
+      res.send(projects);
     } catch (error) {
-        res.status(500).send({ message: "Error fetching projects" });
+      res.status(500).send({ message: "Error fetching projects" });
     }
   };
 
@@ -58,7 +76,8 @@ class ProjectController {
   };
 
   static createProject = async (req: Request, res: Response) => {
-    const { title, description, githubUrl, schoolNumber, classNumber } = req.body;
+    const { title, description, githubUrl, schoolNumber, classNumber } =
+      req.body;
     const userId = res.locals.jwtPayload.userId;
     const userRole = res.locals.jwtPayload.role;
 
@@ -68,11 +87,15 @@ class ProjectController {
     project.githubUrl = githubUrl;
     project.schoolNumber = schoolNumber;
     project.classNumber = classNumber;
-    
-    if (userRole === UserRole.ADMIN || userRole === UserRole.TEACHER || userRole === UserRole.UNIVERSITY_STAFF) {
-        project.status = ProjectStatus.APPROVED;
+
+    if (
+      userRole === UserRole.ADMIN ||
+      userRole === UserRole.TEACHER ||
+      userRole === UserRole.UNIVERSITY_STAFF
+    ) {
+      project.status = ProjectStatus.APPROVED;
     } else {
-        project.status = ProjectStatus.PENDING;
+      project.status = ProjectStatus.PENDING;
     }
 
     const userRepository = AppDataSource.getRepository(User);
@@ -134,9 +157,9 @@ class ProjectController {
     const projectRepository = AppDataSource.getRepository(Project);
     let project;
     try {
-      project = await projectRepository.findOneOrFail({ 
+      project = await projectRepository.findOneOrFail({
         where: { id },
-        relations: ["owner"] 
+        relations: ["owner"],
       });
     } catch (error) {
       res.status(404).send({ message: "Project not found" });
@@ -144,33 +167,37 @@ class ProjectController {
     }
 
     const isOwner = project.owner.id === userId;
-    const isAdminOrTeacher = [UserRole.ADMIN, UserRole.TEACHER, UserRole.UNIVERSITY_STAFF].includes(userRole);
+    const isAdminOrTeacher = [
+      UserRole.ADMIN,
+      UserRole.TEACHER,
+      UserRole.UNIVERSITY_STAFF,
+    ].includes(userRole);
 
     if (!isOwner && !isAdminOrTeacher) {
-        res.status(403).send({ message: "Not authorized" });
-        return;
+      res.status(403).send({ message: "Not authorized" });
+      return;
     }
 
     if (title !== undefined) {
-        if (isOwner) project.title = title;
+      if (isOwner) project.title = title;
     }
     if (description !== undefined) {
-        if (isOwner) project.description = description;
+      if (isOwner) project.description = description;
     }
     if (githubUrl !== undefined) {
-        if (isOwner) project.githubUrl = githubUrl;
+      if (isOwner) project.githubUrl = githubUrl;
     }
 
     if (status !== undefined) {
-        if (!isAdminOrTeacher) {
-             res.status(403).send({ message: "Not authorized to update status" });
-             return;
-        }
-        if (!Object.values(ProjectStatus).includes(status)) {
-            res.status(400).send({ message: "Invalid status" });
-            return;
-        }
-        project.status = status;
+      if (!isAdminOrTeacher) {
+        res.status(403).send({ message: "Not authorized to update status" });
+        return;
+      }
+      if (!Object.values(ProjectStatus).includes(status)) {
+        res.status(400).send({ message: "Invalid status" });
+        return;
+      }
+      project.status = status;
     }
 
     try {
@@ -188,8 +215,8 @@ class ProjectController {
     const { status } = req.body;
 
     if (!status) {
-        res.status(400).send({ message: "Status is required" });
-        return;
+      res.status(400).send({ message: "Status is required" });
+      return;
     }
 
     if (!Object.values(ProjectStatus).includes(status)) {
@@ -207,14 +234,14 @@ class ProjectController {
     }
 
     project.status = status;
-    
+
     try {
-        await projectRepository.save(project);
+      await projectRepository.save(project);
     } catch (error) {
-        res.status(500).send({ message: "Error updating project status" });
-        return;
+      res.status(500).send({ message: "Error updating project status" });
+      return;
     }
-    
+
     res.send({ message: "Status updated" });
   };
 
