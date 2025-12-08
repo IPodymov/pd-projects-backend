@@ -44,4 +44,11 @@ router.patch(
   ProjectController.updateStatus
 );
 
+// Admin only
+router.delete(
+  "/:id",
+  [checkJwt, checkRole([UserRole.ADMIN])],
+  ProjectController.deleteProject
+);
+
 export default router;

@@ -274,6 +274,24 @@ class ProjectController {
 
     res.send(file);
   };
+
+  static deleteProject = async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const projectRepository = AppDataSource.getRepository(Project);
+
+    if (isNaN(id)) {
+      res.status(400).send({ message: "Invalid project ID" });
+      return;
+    }
+
+    try {
+      const project = await projectRepository.findOneOrFail({ where: { id } });
+      await projectRepository.remove(project);
+      res.status(204).send();
+    } catch (error) {
+      res.status(404).send({ message: "Project not found" });
+    }
+  };
 }
 
 export default ProjectController;
