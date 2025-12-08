@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../data-source";
 import { User, UserRole } from "../entities/User";
+import { School } from "../entities/School";
 import { Invitation } from "../entities/Invitation";
 import * as jwt from "jsonwebtoken";
 import * as bcrypt from "bcryptjs";
@@ -75,8 +76,7 @@ class AuthController {
   };
 
   static register = async (req: Request, res: Response) => {
-    const { name, email, password, schoolNumber, classNumber, token } =
-      req.body;
+    const { name, email, password, schoolId, schoolClassId, token } = req.body;
     const user = new User();
     user.name = name;
     user.email = email;
@@ -93,15 +93,31 @@ class AuthController {
           return;
         }
         user.role = invitation.role;
-        user.schoolNumber = invitation.schoolNumber;
+        // Get school by number
+        const schoolRepository = AppDataSource.getRepository(School);
+        const school = await schoolRepository.findOne({
+          where: { number: invitation.schoolNumber },
+        });
+        if (!school) {
+          res.status(400).send({ message: "School not found" });
+          return;
+        }
+        user.school = school;
+        user.schoolId = school.id;
       } catch (error) {
         res.status(400).send({ message: "Invalid invitation token" });
         return;
       }
     } else {
-      user.role = UserRole.STUDENT; // Default role
-      user.schoolNumber = schoolNumber;
-      user.classNumber = classNumber;
+      if (!schoolId) {
+        res.status(400).send({ message: "School ID is required" });
+        return;
+      }
+      user.role = UserRole.STUDENT;
+      user.schoolId = schoolId;
+      if (schoolClassId) {
+        user.schoolClassId = schoolClassId;
+      }
     }
 
     const userRepository = AppDataSource.getRepository(User);

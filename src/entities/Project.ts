@@ -7,9 +7,12 @@ import {
   ManyToMany,
   CreateDateColumn,
   UpdateDateColumn,
+  JoinColumn,
 } from "typeorm";
 import { User } from "./User";
 import { File } from "./File";
+import { School } from "./School";
+import { SchoolClass } from "./SchoolClass";
 
 export enum ProjectStatus {
   PENDING = "pending",
@@ -38,11 +41,19 @@ export class Project {
   @Column({ nullable: true })
   githubUrl?: string;
 
-  @Column({ nullable: true })
-  schoolNumber?: string;
+  @ManyToOne(() => School, { eager: true, onDelete: "RESTRICT" })
+  @JoinColumn({ name: "schoolId" })
+  school!: School;
+
+  @Column()
+  schoolId!: number;
+
+  @ManyToOne(() => SchoolClass, { eager: true, nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "schoolClassId" })
+  schoolClass?: SchoolClass;
 
   @Column({ nullable: true })
-  classNumber?: string;
+  schoolClassId?: number;
 
   @ManyToOne(() => User, (user) => user.ownedProjects)
   owner!: User;

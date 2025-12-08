@@ -14,29 +14,30 @@ class ProjectController {
     try {
       const user = await userRepository.findOneOrFail({
         where: { id: userId },
+        relations: ["school", "schoolClass"],
       });
 
       const query = projectRepository
         .createQueryBuilder("project")
         .leftJoinAndSelect("project.owner", "owner")
         .leftJoinAndSelect("project.members", "members")
-        .leftJoinAndSelect("project.files", "files");
+        .leftJoinAndSelect("project.files", "files")
+        .leftJoinAndSelect("project.school", "school")
+        .leftJoinAndSelect("project.schoolClass", "schoolClass");
 
-      // If user is a student, filter by school and class
+      // If user is a student, filter by school and optionally by class
       if (user.role === UserRole.STUDENT) {
-        if (user.schoolNumber) {
-          query.andWhere("project.schoolNumber ILIKE :schoolNumber", {
-            schoolNumber: user.schoolNumber,
+        if (user.schoolId) {
+          query.andWhere("project.schoolId = :schoolId", {
+            schoolId: user.schoolId,
           });
         }
-        if (user.classNumber) {
+        if (user.schoolClassId) {
           query.andWhere(
             new Brackets((qb) => {
-              qb.where("project.classNumber ILIKE :classNumber", {
-                classNumber: user.classNumber,
-              })
-                .orWhere("project.classNumber IS NULL")
-                .orWhere("project.classNumber = ''");
+              qb.where("project.schoolClassId = :schoolClassId", {
+                schoolClassId: user.schoolClassId,
+              }).orWhere("project.schoolClassId IS NULL");
             })
           );
         }
@@ -46,9 +47,9 @@ class ProjectController {
         user.role === UserRole.TEACHER ||
         user.role === UserRole.UNIVERSITY_STAFF
       ) {
-        if (user.schoolNumber) {
-          query.andWhere("project.schoolNumber ILIKE :schoolNumber", {
-            schoolNumber: user.schoolNumber,
+        if (user.schoolId) {
+          query.andWhere("project.schoolId = :schoolId", {
+            schoolId: user.schoolId,
           });
         }
       }
@@ -76,17 +77,20 @@ class ProjectController {
   };
 
   static createProject = async (req: Request, res: Response) => {
-    const { title, description, githubUrl, schoolNumber, classNumber } =
-      req.body;
+    const { title, description, githubUrl, schoolId, schoolClassId } = req.body;
     const userId = res.locals.jwtPayload.userId;
     const userRole = res.locals.jwtPayload.role;
+
+    if (!schoolId) {
+      return res.status(400).send({ message: "schoolId is required" });
+    }
 
     const project = new Project();
     project.title = title;
     project.description = description;
     project.githubUrl = githubUrl;
-    project.schoolNumber = schoolNumber;
-    project.classNumber = classNumber;
+    project.schoolId = schoolId;
+    project.schoolClassId = schoolClassId;
 
     if (
       userRole === UserRole.ADMIN ||

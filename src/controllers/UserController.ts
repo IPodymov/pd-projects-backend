@@ -27,7 +27,8 @@ class UserController {
         where: {
           email: ILike(`%${email}%`),
         },
-        select: ["id", "name", "email", "role", "schoolNumber", "classNumber"],
+        relations: ["school", "schoolClass"],
+        select: ["id", "name", "email", "role"],
       });
       res.send(users);
     } catch (error) {
@@ -36,13 +37,13 @@ class UserController {
   };
 
   static createUser = async (req: Request, res: Response) => {
-    const { name, email, password, role, schoolNumber } = req.body;
+    const { name, email, password, role, schoolId } = req.body;
     const user = new User();
     user.name = name;
     user.email = email;
     user.password = bcrypt.hashSync(password, 8);
     user.role = role;
-    user.schoolNumber = schoolNumber;
+    user.schoolId = schoolId;
 
     const userRepository = AppDataSource.getRepository(User);
     try {
@@ -86,7 +87,7 @@ class UserController {
 
   static updateUser = async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
-    const { name, email, password, schoolNumber, classNumber } = req.body;
+    const { name, email, password, schoolId, schoolClassId } = req.body;
 
     const currentUserId = parseInt(res.locals.jwtPayload.userId);
     const currentUserRole = res.locals.jwtPayload.role;
@@ -128,12 +129,18 @@ class UserController {
     // Role specific updates
     // If the user being updated is a STUDENT
     if (user.role === UserRole.STUDENT) {
-      if (schoolNumber !== undefined) user.schoolNumber = schoolNumber;
-      if (classNumber !== undefined) user.classNumber = classNumber;
+      if (schoolId !== undefined) {
+        user.schoolId = schoolId;
+      }
+      if (schoolClassId !== undefined) {
+        user.schoolClassId = schoolClassId;
+      }
     }
     // If the user being updated is a TEACHER
     else if (user.role === UserRole.TEACHER) {
-      if (schoolNumber !== undefined) user.schoolNumber = schoolNumber;
+      if (schoolId !== undefined) {
+        user.schoolId = schoolId;
+      }
     }
 
     // Admin can force update these fields for any role if needed,

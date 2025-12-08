@@ -65,9 +65,9 @@ Backend API для платформы регистрации проектной 
 
 #### Регистрация
 - **POST** `/auth/register`
-  - Body: `{ name, email, password, schoolNumber?, classNumber?, token? }`
+  - Body: `{ name, email, password, schoolId?, schoolClassId?, token? }`
   - Регистрирует нового пользователя (по умолчанию роль Student)
-  - Если передан `token`, использует приглашение для определения роли
+  - Если передан `token`, использует приглашение для определения роли и школы
   - Возвращает JWT токен и данные пользователя
 
 #### Вход
@@ -96,7 +96,7 @@ Backend API для платформы регистрации проектной 
 #### Создание проекта
 - **POST** `/projects`
   - Требует авторизации
-  - Body: `{ title, description, githubUrl?, schoolNumber?, classNumber? }`
+  - Body: `{ title, description, githubUrl?, schoolId, schoolClassId? }`
   - Доступно: Student, Teacher, University Staff, Admin
   - Проекты от Admin/Teacher/Staff автоматически одобряются
 
@@ -142,12 +142,12 @@ Backend API для платформы регистрации проектной 
 #### Создание пользователя (Admin)
 - **POST** `/users`
   - Требует роли: Admin
-  - Body: `{ name, email, password, role, schoolNumber? }`
+  - Body: `{ name, email, password, role, schoolId? }`
 
 #### Обновление профиля
 - **PATCH** `/users/:id`
   - Требует авторизации
-  - Body: `{ name?, email?, password?, schoolNumber?, classNumber? }`
+  - Body: `{ name?, email?, password?, schoolId?, schoolClassId? }`
   - Пользователь может обновить свой профиль, Admin — любой
 
 #### Изменение роли (Admin)
@@ -175,6 +175,8 @@ src/
 ├── entities/          # TypeORM сущности (модели)
 │   ├── User.ts
 │   ├── Project.ts
+│   ├── School.ts
+│   ├── SchoolClass.ts
 │   ├── File.ts
 │   └── Invitation.ts
 ├── middlewares/       # Middleware для аутентификации и авторизации
@@ -183,6 +185,7 @@ src/
 │   ├── index.ts
 │   ├── authRoutes.ts
 │   ├── projectRoutes.ts
+│   ├── schoolRoutes.ts
 │   └── userRoutes.ts
 ├── utils/             # Утилиты (загрузка файлов и т.д.)
 │   └── fileUpload.ts

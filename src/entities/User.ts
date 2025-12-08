@@ -5,8 +5,12 @@ import {
   OneToMany,
   ManyToMany,
   JoinTable,
+  ManyToOne,
+  JoinColumn,
 } from "typeorm";
 import { Project } from "./Project";
+import { School } from "./School";
+import { SchoolClass } from "./SchoolClass";
 
 export enum UserRole {
   STUDENT = "student",
@@ -36,11 +40,23 @@ export class User {
   })
   role!: UserRole;
 
+  @ManyToOne(() => School, { eager: true, onDelete: "RESTRICT" })
+  @JoinColumn({ name: "schoolId" })
+  school!: School;
+
   @Column()
-  schoolNumber!: string;
+  schoolId!: number;
+
+  @ManyToOne(() => SchoolClass, {
+    eager: true,
+    nullable: true,
+    onDelete: "SET NULL",
+  })
+  @JoinColumn({ name: "schoolClassId" })
+  schoolClass?: SchoolClass;
 
   @Column({ nullable: true })
-  classNumber?: string;
+  schoolClassId?: number;
 
   @Column({ nullable: true })
   githubId?: string;

@@ -1,53 +1,96 @@
-- [x] Verify that the copilot-instructions.md file in the .github directory is created.
+# PD Projects Backend - Development Guide
 
-- [x] Clarify Project Requirements
-	<!-- Ask for project type, language, and frameworks if not specified. Skip if already provided. -->
+## Project Summary
 
-- [x] Scaffold the Project
-	<!--
-	Ensure that the previous step has been marked as completed.
-	Call project setup tool with projectType parameter.
-	Run scaffolding command to create project files and folders.
-	Use '.' as the working directory.
-	If no appropriate projectType is available, search documentation using available tools.
-	Otherwise, create the project structure manually using available file creation tools.
-	-->
+Complete backend API for "Project Activity Registration" platform with Express.js, TypeScript, PostgreSQL, and TypeORM.
 
-- [x] Customize the Project
-	<!--
-	Verify that all previous steps have been completed successfully and you have marked the step as completed.
-	Develop a plan to modify codebase according to user requirements.
-	Apply modifications using appropriate tools and user-provided references.
-	Skip this step for "Hello World" projects.
-	-->
+**Features**: User management with RBAC, project CRUD, team collaboration, file uploads, GitHub OAuth, invitation system, school/class organization.
 
-- [x] Install Required Extensions
-	<!-- ONLY install extensions provided mentioned in the get_project_setup_info. Skip this step otherwise and mark as completed. -->
+## Database Schema
 
-- [x] Compile the Project
-	<!--
-	Verify that all previous steps have been completed.
-	Install any missing dependencies.
-	Run diagnostics and resolve any issues.
-	Check for markdown files in project folder for relevant instructions on how to do this.
-	-->
+### Core Entities
+- **User**: id, name, email, password, role, githubId, githubUsername, schoolId (FK), schoolClassId (FK)
+- **Project**: id, title, description, githubUrl, status, schoolId (FK), schoolClassId (FK), ownerId (FK)
+- **School**: id, number, name, city
+- **SchoolClass**: id, name, schoolId (FK)
+- **File**: id, originalName, storagePath, fileType, projectId (FK)
+- **Invitation**: id, token, schoolNumber, createdBy, createdAt
 
-- [x] Create and Run Task
-	<!--
-	Verify that all previous steps have been completed.
-	Check https://code.visualstudio.com/docs/debugtest/tasks to determine if the project needs a task. If so, use the create_and_run_task to create and launch a task based on package.json, README.md, and project structure.
-	Skip this step otherwise.
-	 -->
+### Key Relations
+- User ManyToOne School/SchoolClass
+- Project ManyToOne School/SchoolClass/User(owner)
+- Project ManyToMany User(members)
+- SchoolClass ManyToOne School
 
-- [x] Launch the Project
-	<!--
-	Verify that all previous steps have been completed.
-	Prompt user for debug mode, launch only if confirmed.
-	 -->
+## API Endpoints
 
-- [x] Ensure Documentation is Complete
-	<!--
-	Verify that all previous steps have been completed.
-	Verify that README.md and the copilot-instructions.md file in the .github directory exists and contains current project information.
-	Clean up the copilot-instructions.md file in the .github directory by removing all HTML comments.
-	 -->
+### Auth (`/auth`)
+- `POST /register` - Register (schoolId/schoolClassId or token)
+- `POST /login` - Login
+- `POST /invite` - Create invitation (Admin/Staff only)
+
+### Projects (`/projects`)
+- `GET /` - List projects (filtered by school/class)
+- `GET /:id` - Get details
+- `POST /` - Create (schoolId required)
+- `PATCH /:id` - Update
+- `PATCH /:id/status` - Change status (Teacher/Staff/Admin)
+- `POST /:id/join` - Join team (Student)
+- `POST /:id/upload` - Upload files
+- `DELETE /:id` - Delete (Admin only)
+
+### Users (`/users`)
+- `GET /` - List (Admin only)
+- `GET /search` - Search by email (Admin/Staff)
+- `POST /` - Create (Admin only)
+- `PATCH /:id` - Update profile
+- `PATCH /:id/role` - Change role (Admin only)
+- `POST /github/link` - Link GitHub
+- `DELETE /:id` - Delete (Admin only)
+
+## Recent Refactoring
+
+**Schema normalized from strings to foreign keys**:
+- schoolNumber → schoolId (FK to School)
+- classNumber → schoolClassId (FK to SchoolClass)
+
+**Updated Controllers**:
+- AuthController: register() now accepts schoolId/schoolClassId
+- ProjectController: listAll() and createProject() use FK relationships
+- UserController: All methods use new FK structure
+
+## Development Notes
+
+1. **Eager loading**: Include relations in queries for nested data
+2. **Role-based filtering**: Applied at query level for performance
+3. **File storage**: Multer with local filesystem
+4. **Auth**: JWT (1 hour) + bcryptjs (8 salt rounds)
+5. **Invitations**: Secure tokens with schoolNumber mapping
+
+## Running the Project
+
+```bash
+npm install
+npm run dev          # Development server (port 3000)
+npm run build        # TypeScript build
+npm start            # Production server
+```
+
+## Environment Variables
+
+```env
+DATABASE_URL=postgres://user:password@host:5432/db
+JWT_SECRET=your_secret_key
+GITHUB_CLIENT_ID=your_client_id
+GITHUB_CLIENT_SECRET=your_client_secret
+```
+
+## Tasks
+
+- [ ] Data migration system (string → FK)
+- [ ] Seed School/SchoolClass tables
+- [ ] OpenAPI/Swagger documentation
+- [ ] Unit/integration tests
+- [ ] Rate limiting
+- [ ] Email notifications
+- [ ] Input validation/sanitization
