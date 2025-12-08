@@ -4,6 +4,7 @@ import { User, UserRole } from "../entities/User";
 import * as bcrypt from "bcryptjs";
 import axios from "axios";
 import { ILike } from "typeorm";
+import sharp from "sharp";
 
 class UserController {
   static listAll = async (req: Request, res: Response) => {
@@ -190,7 +191,21 @@ class UserController {
       return;
     }
 
-    user.avatarUrl = req.file.path.replace(/\\/g, "/");
+    try {
+      // Compress and resize image
+      const compressedBuffer = await sharp(req.file.buffer)
+        .resize(500, 500, { fit: "cover" })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+      
+      // Convert to base64
+      const base64Image = `data:image/jpeg;base64,${compressedBuffer.toString("base64")}`;
+      user.avatarUrl = base64Image;
+    } catch (error) {
+      res.status(500).send({ message: "Error processing image" });
+      return;
+    }
+
     await userRepository.save(user);
 
     const { password: _, ...userWithoutPassword } = user;

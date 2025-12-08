@@ -42,7 +42,7 @@ export class User {
   @Column({ nullable: true })
   classNumber?: string;
 
-  @Column({ nullable: true })
+  @Column({ type: "text", nullable: true })
   avatarUrl?: string;
 
   @Column({ nullable: true })
