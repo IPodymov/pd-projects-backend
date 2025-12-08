@@ -20,3 +20,5 @@ Thumbs.db
 # Project specific
 uploads/
 coverage/
+
+seeds/

@@ -3,9 +3,11 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToMany,
   JoinColumn,
 } from "typeorm";
 import { School } from "./School";
+import { Chat } from "./Chat";
 
 @Entity()
 export class SchoolClass {
@@ -21,4 +23,7 @@ export class SchoolClass {
 
   @Column()
   schoolId!: number;
+
+  @OneToMany(() => Chat, (chat) => chat.schoolClass, { cascade: true })
+  chats!: Chat[];
 }

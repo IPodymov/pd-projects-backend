@@ -7,6 +7,8 @@ import { File } from "./entities/File";
 import { Invitation } from "./entities/Invitation";
 import { School } from "./entities/School";
 import { SchoolClass } from "./entities/SchoolClass";
+import { Chat } from "./entities/Chat";
+import { Message } from "./entities/Message";
 
 dotenv.config();
 
@@ -15,7 +17,7 @@ export const AppDataSource = new DataSource({
   url: process.env.DATABASE_URL,
   synchronize: true, // Don't use this in production!
   logging: false,
-  entities: [User, Project, File, Invitation, School, SchoolClass],
+  entities: [User, Project, File, Invitation, School, SchoolClass, Chat, Message],
   migrations: [],
   subscribers: [],
 });
