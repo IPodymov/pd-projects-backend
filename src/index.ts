@@ -16,7 +16,11 @@ AppDataSource.initialize()
     app.use(cors());
     app.use(helmet());
     app.use(bodyParser.json());
-    app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+    // Надежная раздача статики для production и dev
+    app.use(
+      "/uploads",
+      express.static(path.resolve(__dirname, "..", "uploads"))
+    );
 
     // Routes
     app.use("/", routes);
