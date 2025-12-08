@@ -7,7 +7,7 @@ import { upload } from "../utils/fileUpload";
 const router = Router();
 
 router.get("/", [checkJwt, checkRole([UserRole.ADMIN])], UserController.listAll);
-router.get("/search", [checkJwt], UserController.search);
+router.get("/search", [checkJwt, checkRole([UserRole.ADMIN, UserRole.UNIVERSITY_STAFF])], UserController.search);
 router.post("/", [checkJwt, checkRole([UserRole.ADMIN])], UserController.createUser);
 router.delete("/:id", [checkJwt, checkRole([UserRole.ADMIN])], UserController.deleteUser);
 router.patch("/:id", [checkJwt], UserController.updateUser);
