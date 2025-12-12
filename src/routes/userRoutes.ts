@@ -5,6 +5,10 @@ import { UserRole } from "../entities/User";
 
 const router = Router();
 
+// Профиль текущего пользователя
+router.get("/profile", [checkJwt], UserController.getProfile);
+router.patch("/profile", [checkJwt], UserController.updateProfile);
+
 router.get("/", [checkJwt, checkRole([UserRole.ADMIN])], UserController.listAll);
 router.get("/search", [checkJwt, checkRole([UserRole.ADMIN, UserRole.UNIVERSITY_STAFF])], UserController.search);
 router.post("/", [checkJwt, checkRole([UserRole.ADMIN])], UserController.createUser);

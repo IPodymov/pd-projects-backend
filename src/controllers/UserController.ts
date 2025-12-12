@@ -6,6 +6,105 @@ import * as bcrypt from "bcryptjs";
 import { ILike } from "typeorm";
 
 class UserController {
+  // Получение профиля текущего пользователя
+  static getProfile = async (req: Request, res: Response) => {
+    const userId = res.locals.jwtPayload.userId;
+    const userRepository = AppDataSource.getRepository(User);
+
+    try {
+      const user = await userRepository.findOneOrFail({
+        where: { id: userId },
+        relations: ["school", "schoolClass"],
+      });
+
+      const { password: _, ...userWithoutPassword } = user;
+      res.send(userWithoutPassword);
+    } catch {
+      res.status(404).send({ message: "User not found" });
+    }
+  };
+
+  // Обновление профиля текущего пользователя (упрощённый endpoint)
+  static updateProfile = async (req: Request, res: Response) => {
+    const userId = res.locals.jwtPayload.userId;
+    const { name, email, password, schoolId, schoolClassId } = req.body;
+
+    const userRepository = AppDataSource.getRepository(User);
+    let user;
+    try {
+      user = await userRepository.findOneOrFail({
+        where: { id: userId },
+        relations: ["school", "schoolClass"],
+      });
+    } catch {
+      res.status(404).send({ message: "User not found" });
+      return;
+    }
+
+    // Обновление имени
+    if (name !== undefined && name.trim() !== "") {
+      user.name = name.trim();
+    }
+
+    // Обновление email с проверкой уникальности
+    if (email !== undefined && email.trim() !== "") {
+      const existingUser = await userRepository.findOne({ where: { email } });
+      if (existingUser && existingUser.id !== userId) {
+        res.status(409).send({ message: "Email already in use" });
+        return;
+      }
+      user.email = email.trim().toLowerCase();
+    }
+
+    // Обновление пароля (только если передан)
+    if (password !== undefined && password.trim() !== "") {
+      if (password.length < 6) {
+        res.status(400).send({ message: "Password must be at least 6 characters" });
+        return;
+      }
+      user.password = bcrypt.hashSync(password, 8);
+    }
+
+    // Обновление школы/класса в зависимости от роли
+    // Студент: НЕ может менять школу и класс
+    // Учитель: может менять только школу (не класс)
+    // Админ и Сотрудник вуза: могут менять все поля
+    if (user.role === UserRole.ADMIN || user.role === UserRole.UNIVERSITY_STAFF) {
+      // Админы и сотрудники могут обновлять все поля
+      if (schoolId !== undefined) {
+        user.schoolId = schoolId;
+      }
+      if (schoolClassId !== undefined) {
+        user.schoolClassId = schoolClassId;
+      }
+    } else if (user.role === UserRole.TEACHER) {
+      // Учитель может менять только школу
+      if (schoolId !== undefined) {
+        user.schoolId = schoolId;
+      }
+    }
+    // Студент не может менять schoolId и schoolClassId
+
+    try {
+      await userRepository.save(user);
+
+      // Перезагрузить пользователя с отношениями
+      const updatedUser = await userRepository.findOne({
+        where: { id: userId },
+        relations: ["school", "schoolClass"],
+      });
+
+      const { password: _, ...userWithoutPassword } = updatedUser!;
+
+      res.send({
+        message: "Profile updated successfully",
+        user: userWithoutPassword,
+      });
+    } catch {
+      res.status(500).send({ message: "Error updating profile" });
+    }
+  };
+
   static listAll = async (req: Request, res: Response) => {
     const userRepository = AppDataSource.getRepository(User);
     const users = await userRepository.find({
