@@ -11,16 +11,16 @@ import * as crypto from "crypto";
 // Вспомогательная функция для создания стандартных классов
 async function createDefaultClassesForSchool(schoolId: number) {
   const classRepository = AppDataSource.getRepository(SchoolClass);
-  
+
   // Проверить, есть ли уже классы у этой школы
   const existingClasses = await classRepository.find({
-    where: { schoolId }
+    where: { schoolId },
   });
 
   if (existingClasses.length === 0) {
     // Создать 3 стандартных класса
     const defaultClasses = ["9 класс", "10 класс", "11 класс"];
-    
+
     for (const className of defaultClasses) {
       const schoolClass = new SchoolClass();
       schoolClass.name = className;
@@ -49,7 +49,8 @@ class AuthController {
     await invitationRepository.save(invitation);
 
     // Генерация ссылки для фронтенда (можно настроить через env)
-    const frontendUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get("host")}`;
+    const frontendUrl =
+      process.env.FRONTEND_URL || `${req.protocol}://${req.get("host")}`;
     const invitationLink = `${frontendUrl}/auth/register?token=${invitation.token}`;
 
     res.send({
@@ -78,7 +79,10 @@ class AuthController {
     let user: User;
 
     try {
-      user = await userRepository.findOneOrFail({ where: { email } });
+      user = await userRepository.findOneOrFail({
+        where: { email },
+        relations: ["school", "schoolClass"],
+      });
     } catch {
       res.status(401).send({ message: "Invalid credentials" });
       return;
@@ -97,9 +101,14 @@ class AuthController {
 
     const { password: _, ...userWithoutPassword } = user;
 
+    // Кладём в cookie полный профиль пользователя (без пароля), включая связи school/schoolClass
     res.cookie("user", JSON.stringify(userWithoutPassword), {
       maxAge: 3600000,
       httpOnly: false,
+      sameSite: "lax",
+      path: "/",
+      // secure можно сделать true в production за счёт HTTPS
+      secure: process.env.NODE_ENV === "production",
     });
 
     res.send({

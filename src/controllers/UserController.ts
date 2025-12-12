@@ -108,6 +108,15 @@ class UserController {
 
       const { password: _, ...userWithoutPassword } = updatedUser!;
 
+      // Обновляем cookie 'user' полным профилем (без пароля)
+      res.cookie("user", JSON.stringify(userWithoutPassword), {
+        maxAge: 3600000,
+        httpOnly: false,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      });
+
       res.send({
         message: "Profile updated successfully",
         user: userWithoutPassword,
@@ -280,12 +289,19 @@ class UserController {
       return;
     }
 
-    // Return user without password
-    const { password: _, ...userWithoutPassword } = user;
+    // Перезагружаем пользователя с отношениями для корректной куки и ответа
+    const updated = await userRepository.findOne({
+      where: { id },
+      relations: ["school", "schoolClass"],
+    });
+    const { password: _, ...userWithoutPassword } = updated!;
 
     res.cookie("user", JSON.stringify(userWithoutPassword), {
       maxAge: 3600000,
       httpOnly: false,
+      sameSite: "lax",
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
     });
 
     res.send(userWithoutPassword);
