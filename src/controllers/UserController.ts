@@ -59,7 +59,9 @@ class UserController {
     // Обновление пароля (только если передан)
     if (password !== undefined && password.trim() !== "") {
       if (password.length < 6) {
-        res.status(400).send({ message: "Password must be at least 6 characters" });
+        res
+          .status(400)
+          .send({ message: "Password must be at least 6 characters" });
         return;
       }
       user.password = bcrypt.hashSync(password, 8);
@@ -68,18 +70,28 @@ class UserController {
     // Обновление школы/класса в зависимости от роли
     // Студент: НЕ может менять школу и класс
     // Учитель: может менять только школу (не класс)
-    // Админ и Сотрудник вуза: могут менять все поля
-    if (user.role === UserRole.ADMIN || user.role === UserRole.UNIVERSITY_STAFF) {
-      // Админы и сотрудники могут обновлять все поля
-      if (schoolId !== undefined) {
-        user.schoolId = schoolId;
+    // Админ и Сотрудник вуза: могут менять все поля и могут очищать школу/класс (NULL)
+    if (
+      user.role === UserRole.ADMIN ||
+      user.role === UserRole.UNIVERSITY_STAFF
+    ) {
+      // Если поле присутствует в запросе, позволяем установить значение (включая NULL)
+      if (Object.prototype.hasOwnProperty.call(req.body, "schoolId")) {
+        user.schoolId = schoolId ?? null;
+        if (schoolId === null) {
+          // При очистке школы также очищаем класс
+          user.schoolClassId = null;
+        }
       }
-      if (schoolClassId !== undefined) {
-        user.schoolClassId = schoolClassId;
+      if (Object.prototype.hasOwnProperty.call(req.body, "schoolClassId")) {
+        user.schoolClassId = schoolClassId ?? null;
       }
     } else if (user.role === UserRole.TEACHER) {
-      // Учитель может менять только школу
-      if (schoolId !== undefined) {
+      // Учитель может менять только школу (не класс) и не может очищать до NULL
+      if (
+        Object.prototype.hasOwnProperty.call(req.body, "schoolId") &&
+        schoolId !== null
+      ) {
         user.schoolId = schoolId;
       }
     }
@@ -228,17 +240,31 @@ class UserController {
     // Role specific updates
     // If the user being updated is a STUDENT
     if (user.role === UserRole.STUDENT) {
-      if (schoolId !== undefined) {
-        user.schoolId = schoolId;
-      }
-      if (schoolClassId !== undefined) {
-        user.schoolClassId = schoolClassId;
-      }
+      // Students cannot change school/class via this endpoint
     }
     // If the user being updated is a TEACHER
     else if (user.role === UserRole.TEACHER) {
-      if (schoolId !== undefined) {
+      // Teacher can change only school (not to NULL)
+      if (
+        Object.prototype.hasOwnProperty.call(req.body, "schoolId") &&
+        schoolId !== null
+      ) {
         user.schoolId = schoolId;
+      }
+    }
+    // Admin/University Staff can change all fields, including clearing school/class to NULL
+    else if (
+      user.role === UserRole.ADMIN ||
+      user.role === UserRole.UNIVERSITY_STAFF
+    ) {
+      if (Object.prototype.hasOwnProperty.call(req.body, "schoolId")) {
+        user.schoolId = schoolId ?? null;
+        if (schoolId === null) {
+          user.schoolClassId = null;
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(req.body, "schoolClassId")) {
+        user.schoolClassId = schoolClassId ?? null;
       }
     }
 

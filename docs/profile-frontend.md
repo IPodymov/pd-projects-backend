@@ -55,6 +55,16 @@ Content-Type: application/json
 }
 ```
 
+Примечание:
+- Для ролей Admin и University Staff можно очистить школу/класс, передав `null`:
+
+```json
+{
+  "schoolId": null,
+  "schoolClassId": null
+}
+```
+
 ### Ответ
 ```json
 {
@@ -77,6 +87,24 @@ Content-Type: application/json
       "name": "11 класс",
       "schoolId": 5
     }
+  }
+}
+```
+
+Если школа/класс очищены (для Admin/University Staff), в ответе будут `null`:
+
+```json
+{
+  "message": "Profile updated successfully",
+  "user": {
+    "id": 10,
+    "name": "Администратор",
+    "email": "admin@example.com",
+    "role": "admin",
+    "schoolId": null,
+    "schoolClassId": null,
+    "school": null,
+    "schoolClass": null
   }
 }
 ```

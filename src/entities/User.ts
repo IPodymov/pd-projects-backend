@@ -39,12 +39,16 @@ export class User {
   })
   role!: UserRole;
 
-  @ManyToOne(() => School, { eager: true, onDelete: "RESTRICT" })
+  @ManyToOne(() => School, {
+    eager: true,
+    nullable: true,
+    onDelete: "SET NULL",
+  })
   @JoinColumn({ name: "schoolId" })
-  school!: School;
+  school?: School | null;
 
-  @Column()
-  schoolId!: number;
+  @Column({ nullable: true })
+  schoolId?: number | null;
 
   @ManyToOne(() => SchoolClass, {
     eager: true,
@@ -52,10 +56,10 @@ export class User {
     onDelete: "SET NULL",
   })
   @JoinColumn({ name: "schoolClassId" })
-  schoolClass?: SchoolClass;
+  schoolClass?: SchoolClass | null;
 
   @Column({ nullable: true })
-  schoolClassId?: number;
+  schoolClassId?: number | null;
 
   @Column({ nullable: true })
   githubId?: string;
