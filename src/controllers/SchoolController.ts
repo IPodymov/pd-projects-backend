@@ -126,6 +126,7 @@ class SchoolController {
     }
 
     const schoolRepository = AppDataSource.getRepository(School);
+    const classRepository = AppDataSource.getRepository(SchoolClass);
     const school = new School();
     school.number = number;
     school.name = name;
@@ -133,7 +134,23 @@ class SchoolController {
 
     try {
       await schoolRepository.save(school);
-      res.status(201).send(school);
+
+      // Автоматически создать 3 класса для новой школы
+      const defaultClasses = ["9 класс", "10 класс", "11 класс"];
+      for (const className of defaultClasses) {
+        const schoolClass = new SchoolClass();
+        schoolClass.name = className;
+        schoolClass.schoolId = school.id;
+        await classRepository.save(schoolClass);
+      }
+
+      // Загрузить школу с классами для ответа
+      const schoolWithClasses = await schoolRepository.findOne({
+        where: { id: school.id },
+        relations: ["classes"]
+      });
+
+      res.status(201).send(schoolWithClasses);
     } catch (error: any) {
       if (error.code === "23505") {
         res.status(409).send({ message: "School number already exists" });

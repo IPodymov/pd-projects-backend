@@ -1,217 +1,72 @@
 # PD Projects Backend
 
-Backend API для платформы регистрации проектной деятельности учащихся.
-# PD Projects Backend
+Полноценный backend API для платформы регистрации проектной деятельности. Стек: Express.js, TypeScript, PostgreSQL, TypeORM.
 
+## Коротко
+- Роли: Student, Teacher, University Staff, Admin (RBAC)
+- Проекты: CRUD, участники, файлы, статус (`pending|approved|rejected`)
+- Фильтрация проектов по ролям и связям (школа/класс)
+- Регистрация с выбором школы и класса (публичные endpoints)
+- Чаты классов и сообщения
+- Автоматическое создание 3 классов для каждой школы
 
+Полная документация в папке docs:
+- Обзор: docs/overview.md
+- API: docs/api.md
+- Аутентификация и роли: docs/auth.md
+- Модель данных: docs/data-model.md
+- Установка и запуск: docs/setup.md
+- Развертывание: docs/deployment.md
+- Тестирование: docs/testing.md
+- Вклад: docs/contributing.md
 
-5.  Или запустите в production режиме:
+## Быстрый старт
 
-## API Endpoints
+1. Клонирование и установка
 
-  - Возвращает JWT токен и данные пользователя
+```bash
+git clone https://github.com/IPodymov/pd-projects-backend.git
+cd pd-projects-backend
+npm install
+```
 
+2. Переменные окружения
 
+Создайте `.env` в корне:
 
-#### Вход
-- **POST** `/auth/login`
-  - Body: `{ email, password }`
-  - Возвращает JWT токен и данные пользователя
+```env
+DATABASE_URL=postgres://user:password@host:5432/db
+JWT_SECRET=your_secret_key
+FRONTEND_URL=http://localhost:3001
+```
 
+3. Запуск
 
-#### Создание приглашения (Admin)
+```bash
+npm run dev
+```
+Сервер стартует на порту 3000.
 
-- **POST** `/auth/invitation`
+## Публичные эндпоинты для регистрации
+- GET /schools — список школ, `?search=`
+- GET /schools/:id — школа с классами
+- GET /schools/:schoolId/classes — классы школы, `?search=`
 
-  - Body: `{ schoolNumber }`
-  - Создает инвайт-ссылку для регистрации учителя
-
-### Проекты (`/projects`)
-
-#### Получение списка проектов
-
-- **GET** `/projects`
-
-  - Требует авторизации
-  - Фильтрация по роли пользователя:
-    - **Админ**: видит все проекты
-    - **Ученик**: видит только проекты своей школы и класса
-
-    - **Учитель школы**: видит все проекты своей школы
-
-- **GET** `/projects/:id`
-  - Требует авторизации
-  - Возвращает детали проекта
-
-#### Создание проекта
-- **POST** `/projects`
-  - Требует авторизации
-  - Body: `{ title, description, githubUrl?, schoolId, schoolClassId? }`
-  - Доступно: Student, Teacher, University Staff, Admin
-  - Проекты от Admin/Teacher/Staff автоматически одобряются
-
-
-#### Обновление проекта
-  - Body: `{ title?, description?, githubUrl?, status? }`
-  - Владелец может обновить название, описание, GitHub URL
-  - Admin/Teacher/Staff могут обновить статус
-
-#### Изменение статуса проекта
-- **PATCH** `/projects/:id/status`
-  - Требует роли: Teacher, University Staff, Admin
-  - Body: `{ status: 'approved' | 'rejected' | 'pending' }`
-  - **Учитель, Работник вуза и Администратор** могут одобрять или отклонять проекты
-
-#### Присоединение к проекту
-- **POST** `/projects/:id/join`
-  - Требует роли: Student
-  - Добавляет ученика в команду проекта (макс. 3 участника)
-
-#### Загрузка файлов
-- **POST** `/projects/:id/upload`
-  - Требует авторизации
-  - Multipart/form-data с полями: `file`, `type` (document | presentation)
-
-#### Удаление проекта (Admin)
-- **DELETE** `/projects/:id`
-  - Требует роли: Admin
-  - Удаляет проект
-
-### Пользователи (`/users`)
-
-#### Список пользователей (Admin)
-- **GET** `/users`
-  - Требует роли: Admin
-  - Возвращает список всех пользователей
-
-#### Поиск пользователей
-- **GET** `/users/search?email=...`
-  - Требует роли: Admin, University Staff
-  - Поиск по email (регистронезависимый, частичное совпадение)
-
-#### Создание пользователя (Admin)
-- **POST** `/users`
-  - Требует роли: Admin
-  - Body: `{ name, email, password, role, schoolId? }`
-
-#### Обновление профиля
-- **PATCH** `/users/:id`
-  - Требует авторизации
-  - Body: `{ name?, email?, password?, schoolId?, schoolClassId? }`
-  - Пользователь может обновить свой профиль, Admin — любой
-
-#### Изменение роли (Admin)
-- **PATCH** `/users/:id/role`
-  - Требует роли: Admin
-  - Body: `{ role }`
-
-#### Связывание с GitHub
-  
-  - Требует авторизации
-  - Body: `{ code }` (OAuth код от GitHub)
-
-#### Удаление пользователя (Admin)
-- **DELETE** `/users/:id`
-  - Требует роли: Admin
-
-### Школы и Классы (`/schools`)
-
-#### Получение списка школ (Публичный доступ)
-- **GET** `/schools`
-  - Query параметры: `?search=...` (опционально)
-  - Поиск по номеру школы, названию или городу
-  - Возвращает список всех школ, отсортированных по номеру
-  - **Публичный доступ** для использования при регистрации
-
-#### Получение школы по ID
-- **GET** `/schools/:id`
-  - Возвращает школу с её классами
-  - **Публичный доступ**
-
-#### Получение классов школы (Публичный доступ)
-- **GET** `/schools/:schoolId/classes`
-  - Query параметры: `?search=...` (опционально)
-  - Поиск классов по названию для конкретной школы
-  - Возвращает список классов школы
-  - **Публичный доступ** для использования при регистрации
-
-#### Получение всех классов
-- **GET** `/schools/classes/all`
-  - Query параметры: `?search=...`, `?schoolId=...` (опционально)
-  - Поиск классов по названию и/или фильтрация по schoolId
-  - **Публичный доступ**
-
-#### Создание школы (Admin)
-- **POST** `/schools`
-  - Требует роли: Admin
-  - Body: `{ number, name, city? }`
-
-#### Обновление школы (Admin)
-- **PATCH** `/schools/:id`
-  - Требует роли: Admin
-  - Body: `{ number?, name?, city? }`
-
-#### Удаление школы (Admin)
-- **DELETE** `/schools/:id`
-  - Требует роли: Admin
-
-#### Создание класса (Admin)
-- **POST** `/schools/:schoolId/classes`
-  - Требует роли: Admin
-  - Body: `{ name }`
-
-#### Обновление класса (Admin)
-- **PATCH** `/schools/classes/:classId`
-  - Требует роли: Admin
-  - Body: `{ name }`
-
-#### Удаление класса (Admin)
-- **DELETE** `/schools/classes/:classId`
-  - Требует роли: Admin
+**Автоматическое создание классов**: При регистрации пользователя или создании школы автоматически создаются 3 класса: "9 класс", "10 класс", "11 класс".
 
 ## Структура проекта
-
 ```
 src/
-├── controllers/        # Контроллеры для обработки запросов
-│   ├── AuthController.ts
-│   ├── ProjectController.ts
-│   └── UserController.ts
-├── entities/          # TypeORM сущности (модели)
-│   ├── User.ts
-│   ├── Project.ts
-│   ├── School.ts
-│   ├── SchoolClass.ts
-│   ├── File.ts
-│   └── Invitation.ts
-├── middlewares/       # Middleware для аутентификации и авторизации
-│   └── authMiddleware.ts
-├── routes/            # Маршруты API
-│   ├── index.ts
-│   ├── authRoutes.ts
-│   ├── projectRoutes.ts
-│   ├── schoolRoutes.ts
-│   └── userRoutes.ts
-├── utils/             # Утилиты (загрузка файлов и т.д.)
-│   └── fileUpload.ts
-├── data-source.ts     # Конфигурация TypeORM
-└── index.ts           # Точка входа приложения
+  controllers/
+  entities/
+  middlewares/
+  routes/
+  utils/
+README.md
+docs/
 ```
 
-## Роли и права доступа
-
-| Роль              | Возможности                                                                 |
-|-------------------|-----------------------------------------------------------------------------|
-| **Student**       | Создание проектов, присоединение к командам, загрузка файлов               |
-| **Teacher**       | Все возможности Student + одобрение/отклонение проектов своей школы        |
-| **University Staff** | Все возможности Teacher (может работать с любыми школами)              |
-| **Admin**         | Полный доступ ко всем функциям, управление пользователями и проектами      |
-
 ## Примечания
-
-- Проекты от учителей и администраторов автоматически получают статус "Одобрен"
-- Ученики могут видеть проекты своей школы и класса, а также общешкольные проекты (без указания класса)
-- Все пароли хешируются с помощью bcrypt
-- JWT токены имеют срок действия 1 час
-- При регистрации/входе информация о пользователе сохраняется в куки
-- Профиль автоматически обновляется при изменении данных пользователя
+- TypeORM `synchronize: true` включён для разработки
+- Для production рекомендуются миграции (см. docs/deployment.md)
+- Каждая школа автоматически получает 3 уникальных класса при создании

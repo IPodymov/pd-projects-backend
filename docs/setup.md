@@ -14,12 +14,17 @@ npm install
 ```env
 DATABASE_URL=postgres://user:password@host:5432/db
 JWT_SECRET=your_secret_key
+FRONTEND_URL=http://localhost:3001
 ```
 
 Пример (Railway):
 ```env
 DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<db>
+JWT_SECRET=your_secret_key
+FRONTEND_URL=https://yourfrontend.com
 ```
+
+**Важно**: `FRONTEND_URL` используется для генерации ссылок приглашения учителей. Если не задан, используется адрес backend-сервера.
 
 ## Запуск в разработке
 ```bash

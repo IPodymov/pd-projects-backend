@@ -32,4 +32,5 @@ README.md
 - Настройка и запуск: ./setup.md
 - Развертывание: ./deployment.md
 - Тестирование: ./testing.md
+- Администрирование: ./admin-guide.md
 - Вклад: ./contributing.md

@@ -2,10 +2,33 @@ import { Request, Response } from "express";
 import { AppDataSource } from "../data-source";
 import { User, UserRole } from "../entities/User";
 import { School } from "../entities/School";
+import { SchoolClass } from "../entities/SchoolClass";
 import { Invitation } from "../entities/Invitation";
 import * as jwt from "jsonwebtoken";
 import * as bcrypt from "bcryptjs";
 import * as crypto from "crypto";
+
+// Вспомогательная функция для создания стандартных классов
+async function createDefaultClassesForSchool(schoolId: number) {
+  const classRepository = AppDataSource.getRepository(SchoolClass);
+  
+  // Проверить, есть ли уже классы у этой школы
+  const existingClasses = await classRepository.find({
+    where: { schoolId }
+  });
+
+  if (existingClasses.length === 0) {
+    // Создать 3 стандартных класса
+    const defaultClasses = ["9 класс", "10 класс", "11 класс"];
+    
+    for (const className of defaultClasses) {
+      const schoolClass = new SchoolClass();
+      schoolClass.name = className;
+      schoolClass.schoolId = schoolId;
+      await classRepository.save(schoolClass);
+    }
+  }
+}
 
 class AuthController {
   static createInvitation = async (req: Request, res: Response) => {
@@ -25,11 +48,22 @@ class AuthController {
     const invitationRepository = AppDataSource.getRepository(Invitation);
     await invitationRepository.save(invitation);
 
+    // Генерация ссылки для фронтенда (можно настроить через env)
+    const frontendUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get("host")}`;
+    const invitationLink = `${frontendUrl}/auth/register?token=${invitation.token}`;
+
     res.send({
-      link: `${req.protocol}://${req.get("host")}/auth/register?token=${
-        invitation.token
-      }`,
-      token: invitation.token,
+      message: "Invitation created successfully",
+      invitation: {
+        id: invitation.id,
+        token: invitation.token,
+        schoolNumber: invitation.schoolNumber,
+        role: invitation.role,
+        expiresAt: invitation.expiresAt,
+        link: invitationLink,
+      },
+      // Прямая ссылка для копирования
+      invitationLink,
     });
   };
 
@@ -102,6 +136,9 @@ class AuthController {
           return;
         }
         user.schoolId = school.id;
+
+        // Создать классы для школы, если их еще нет
+        await createDefaultClassesForSchool(school.id);
       } catch {
         res.status(400).send({ message: "Invalid invitation token" });
         return;
@@ -116,6 +153,9 @@ class AuthController {
       if (schoolClassId) {
         user.schoolClassId = schoolClassId;
       }
+
+      // Создать классы для школы, если их еще нет
+      await createDefaultClassesForSchool(schoolId);
     }
 
     const userRepository = AppDataSource.getRepository(User);

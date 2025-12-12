@@ -4,8 +4,11 @@
 
 ## Аутентификация (`/auth`)
 - POST `/auth/register` — регистрация (по `schoolId`/`schoolClassId` или по `token` приглашения)
+  - Автоматически создаёт 3 класса для школы (“9 класс”, “10 класс”, “11 класс”), если их ещё нет
 - POST `/auth/login` — вход, возвращает JWT и пользователя
-- POST `/auth/invitation` — создание приглашения (Admin), body: `{ schoolNumber }`
+- POST `/auth/invitation` — создание приглашения (Admin, University Staff), body: `{ schoolNumber }`
+  - Возвращает полную ссылку для регистрации учителя
+  - Ссылка действует 7 дней
 
 ## Пользователи (`/users`)
 - GET `/users` — список (Admin)
@@ -35,6 +38,13 @@
 - GET `/schools/:id` — школа с классами
 - GET `/schools/:schoolId/classes` — классы школы, поиск `?search=` по названию
 - GET `/schools/classes/all?schoolId=&search=` — все классы (поиск/фильтр)
+- POST `/schools` — создать школу (Admin, University Staff)
+  - Автоматически создаёт 3 класса: “9 класс”, “10 класс”, “11 класс”
+- PATCH `/schools/:id` — обновить школу (Admin, University Staff)
+- DELETE `/schools/:id` — удалить школу (Admin, University Staff)
+- POST `/schools/:schoolId/classes` — создать класс (Admin, University Staff)
+- PATCH `/schools/classes/:classId` — обновить класс (Admin, University Staff)
+- DELETE `/schools/classes/:classId` — удалить класс (Admin, University Staff)
 
 ## Чаты (`/chats`)
 - (Примеры) создание/получение сообщений класса; удаление собственных сообщений или админом.

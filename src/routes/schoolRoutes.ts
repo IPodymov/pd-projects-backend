@@ -18,23 +18,23 @@ router.get("/:schoolId/classes", SchoolController.getSchoolClasses);
 // Получение всех классов с поиском (опционально по schoolId)
 router.get("/classes/all", SchoolController.listClasses);
 
-// Admin endpoints
+// Admin и University Staff endpoints
 // Создание школы
-router.post("/", [checkJwt, checkRole([UserRole.ADMIN])], SchoolController.createSchool);
+router.post("/", [checkJwt, checkRole([UserRole.ADMIN, UserRole.UNIVERSITY_STAFF])], SchoolController.createSchool);
 
 // Обновление школы
-router.patch("/:id", [checkJwt, checkRole([UserRole.ADMIN])], SchoolController.updateSchool);
+router.patch("/:id", [checkJwt, checkRole([UserRole.ADMIN, UserRole.UNIVERSITY_STAFF])], SchoolController.updateSchool);
 
 // Удаление школы
-router.delete("/:id", [checkJwt, checkRole([UserRole.ADMIN])], SchoolController.deleteSchool);
+router.delete("/:id", [checkJwt, checkRole([UserRole.ADMIN, UserRole.UNIVERSITY_STAFF])], SchoolController.deleteSchool);
 
 // Добавление класса в школу
-router.post("/:schoolId/classes", [checkJwt, checkRole([UserRole.ADMIN])], SchoolController.createClass);
+router.post("/:schoolId/classes", [checkJwt, checkRole([UserRole.ADMIN, UserRole.UNIVERSITY_STAFF])], SchoolController.createClass);
 
 // Обновление класса
-router.patch("/classes/:classId", [checkJwt, checkRole([UserRole.ADMIN])], SchoolController.updateClass);
+router.patch("/classes/:classId", [checkJwt, checkRole([UserRole.ADMIN, UserRole.UNIVERSITY_STAFF])], SchoolController.updateClass);
 
 // Удаление класса
-router.delete("/classes/:classId", [checkJwt, checkRole([UserRole.ADMIN])], SchoolController.deleteClass);
+router.delete("/classes/:classId", [checkJwt, checkRole([UserRole.ADMIN, UserRole.UNIVERSITY_STAFF])], SchoolController.deleteClass);
 
 export default router;
