@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { AppDataSource } from "../data-source";
 import { User, UserRole } from "../entities/User";
 import * as bcrypt from "bcryptjs";
-import axios from "axios";
+// GitHub OAuth removed
 import { ILike } from "typeorm";
 
 class UserController {
@@ -31,7 +31,7 @@ class UserController {
         select: ["id", "name", "email", "role"],
       });
       res.send(users);
-    } catch (error) {
+    } catch {
       res.status(500).send({ message: "Error searching users" });
     }
   };
@@ -48,7 +48,7 @@ class UserController {
     const userRepository = AppDataSource.getRepository(User);
     try {
       await userRepository.save(user);
-    } catch (e) {
+    } catch {
       res.status(409).send({ message: "Email already in use" });
       return;
     }
@@ -61,7 +61,7 @@ class UserController {
     let user: User;
     try {
       user = await userRepository.findOneOrFail({ where: { id } });
-    } catch (error) {
+    } catch {
       res.status(404).send({ message: "User not found" });
       return;
     }
@@ -76,7 +76,7 @@ class UserController {
     let user: User;
     try {
       user = await userRepository.findOneOrFail({ where: { id } });
-    } catch (error) {
+    } catch {
       res.status(404).send({ message: "User not found" });
       return;
     }
@@ -107,7 +107,7 @@ class UserController {
     let user;
     try {
       user = await userRepository.findOneOrFail({ where: { id } });
-    } catch (error) {
+    } catch {
       res.status(404).send({ message: "User not found" });
       return;
     }
@@ -150,7 +150,7 @@ class UserController {
 
     try {
       await userRepository.save(user);
-    } catch (e) {
+    } catch {
       res.status(500).send({ message: "Error updating user" });
       return;
     }
@@ -166,74 +166,7 @@ class UserController {
     res.send(userWithoutPassword);
   };
 
-  static linkGithub = async (req: Request, res: Response) => {
-    const { code } = req.body;
-    const userId = res.locals.jwtPayload.userId;
-
-    if (!code) {
-      res.status(400).send({ message: "GitHub code is required" });
-      return;
-    }
-
-    try {
-      // Exchange code for access token
-      const tokenResponse = await axios.post(
-        "https://github.com/login/oauth/access_token",
-        {
-          client_id: process.env.GITHUB_CLIENT_ID,
-          client_secret: process.env.GITHUB_CLIENT_SECRET,
-          code,
-        },
-        {
-          headers: { Accept: "application/json" },
-        }
-      );
-
-      const accessToken = tokenResponse.data.access_token;
-      if (!accessToken) {
-        res
-          .status(400)
-          .send({ message: "Failed to get access token from GitHub" });
-        return;
-      }
-
-      // Get user info from GitHub
-      const userResponse = await axios.get("https://api.github.com/user", {
-        headers: { Authorization: `token ${accessToken}` },
-      });
-
-      const githubUser = userResponse.data;
-
-      const userRepository = AppDataSource.getRepository(User);
-      const user = await userRepository.findOneBy({ id: userId });
-
-      if (!user) {
-        res.status(404).send({ message: "User not found" });
-        return;
-      }
-
-      user.githubId = githubUser.id.toString();
-      user.githubUsername = githubUser.login;
-
-      await userRepository.save(user);
-
-      const { password: _, ...userWithoutPassword } = user;
-
-      res.cookie("user", JSON.stringify(userWithoutPassword), {
-        maxAge: 3600000,
-        httpOnly: false,
-      });
-
-      res.send({
-        message: "GitHub profile linked",
-        githubUsername: user.githubUsername,
-        user: userWithoutPassword,
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(500).send({ message: "Error linking GitHub profile" });
-    }
-  };
+  // linkGithub endpoint removed
 }
 
 export default UserController;

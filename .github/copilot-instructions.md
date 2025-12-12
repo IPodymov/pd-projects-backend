@@ -4,7 +4,7 @@
 
 Complete backend API for "Project Activity Registration" platform with Express.js, TypeScript, PostgreSQL, and TypeORM.
 
-**Features**: User management with RBAC, project CRUD, team collaboration, file uploads, GitHub OAuth, invitation system, school/class organization.
+**Features**: User management with RBAC, project CRUD, team collaboration, file uploads, invitation system, school/class organization.
 
 ## Database Schema
 
@@ -45,7 +45,7 @@ Complete backend API for "Project Activity Registration" platform with Express.j
 - `POST /` - Create (Admin only)
 - `PATCH /:id` - Update profile
 - `PATCH /:id/role` - Change role (Admin only)
-- `POST /github/link` - Link GitHub
+  
 - `DELETE /:id` - Delete (Admin only)
 
 ## Recent Refactoring
@@ -81,8 +81,7 @@ npm start            # Production server
 ```env
 DATABASE_URL=postgres://user:password@host:5432/db
 JWT_SECRET=your_secret_key
-GITHUB_CLIENT_ID=your_client_id
-GITHUB_CLIENT_SECRET=your_client_secret
+  
 ```
 
 ## Tasks

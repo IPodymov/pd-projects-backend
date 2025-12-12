@@ -10,7 +10,7 @@ export const checkJwt = (req: Request, res: Response, next: NextFunction) => {
     const bearer = token.split(" ")[1];
     jwtPayload = <any>jwt.verify(bearer, process.env.JWT_SECRET || "secret");
     res.locals.jwtPayload = jwtPayload;
-  } catch (error) {
+  } catch {
     res.status(401).send({ message: "Unauthorized" });
     return;
   }

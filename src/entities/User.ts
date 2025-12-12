@@ -4,7 +4,6 @@ import {
   Column,
   OneToMany,
   ManyToMany,
-  JoinTable,
   ManyToOne,
   JoinColumn,
 } from "typeorm";
@@ -68,6 +67,5 @@ export class User {
   ownedProjects!: Project[];
 
   @ManyToMany(() => Project, (project) => project.members)
-  @JoinTable()
   memberProjects!: Project[];
 }

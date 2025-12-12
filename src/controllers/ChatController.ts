@@ -35,7 +35,7 @@ class ChatController {
       }
 
       res.send(chat);
-    } catch (error) {
+    } catch {
       res.status(500).send({ message: "Error fetching class chat" });
     }
   };
@@ -85,8 +85,7 @@ class ChatController {
       });
 
       res.status(201).send(savedMessage);
-    } catch (error) {
-      console.error(error);
+    } catch {
       res.status(500).send({ message: "Error sending message" });
     }
   };
@@ -118,7 +117,7 @@ class ChatController {
           pages: Math.ceil(total / limit),
         },
       });
-    } catch (error) {
+    } catch {
       res.status(500).send({ message: "Error fetching messages" });
     }
   };
@@ -130,7 +129,6 @@ class ChatController {
     const messageId = parseInt(req.params.messageId);
 
     const messageRepository = AppDataSource.getRepository(Message);
-    const userRepository = AppDataSource.getRepository(User);
 
     try {
       const message = await messageRepository.findOneOrFail({
@@ -145,7 +143,7 @@ class ChatController {
 
       await messageRepository.remove(message);
       res.send({ message: "Message deleted" });
-    } catch (error) {
+    } catch {
       res.status(404).send({ message: "Message not found" });
     }
   };
@@ -186,8 +184,7 @@ class ChatController {
 
       await chatRepository.save(chat);
       res.status(201).send(chat);
-    } catch (error) {
-      console.error(error);
+    } catch {
       res.status(500).send({ message: "Error creating class chat" });
     }
   };

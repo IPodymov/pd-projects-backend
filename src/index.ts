@@ -5,7 +5,6 @@ import cors from "cors";
 import helmet from "helmet";
 import routes from "./routes";
 import { AppDataSource } from "./data-source";
-import path from "path";
 
 AppDataSource.initialize()
   .then(async () => {

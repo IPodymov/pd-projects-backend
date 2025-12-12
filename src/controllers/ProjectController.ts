@@ -3,7 +3,7 @@ import { AppDataSource } from "../data-source";
 import { Project, ProjectStatus } from "../entities/Project";
 import { User, UserRole } from "../entities/User";
 import { File, FileType } from "../entities/File";
-import { ILike, Brackets } from "typeorm";
+import { Brackets } from "typeorm";
 
 class ProjectController {
   static listAll = async (req: Request, res: Response) => {
@@ -25,8 +25,9 @@ class ProjectController {
         .leftJoinAndSelect("project.school", "school")
         .leftJoinAndSelect("project.schoolClass", "schoolClass");
 
-      // If user is a student, filter by school and optionally by class
+      // Фильтрация по ролям
       if (user.role === UserRole.STUDENT) {
+        // Ученик: только проекты своей школы и класса
         if (user.schoolId) {
           query.andWhere("project.schoolId = :schoolId", {
             schoolId: user.schoolId,
@@ -41,23 +42,21 @@ class ProjectController {
             })
           );
         }
-      }
-      // If user is a teacher or staff, filter by school
-      else if (
-        user.role === UserRole.TEACHER ||
-        user.role === UserRole.UNIVERSITY_STAFF
-      ) {
+      } else if (user.role === UserRole.TEACHER) {
+        // Учитель: все проекты своей школы
         if (user.schoolId) {
           query.andWhere("project.schoolId = :schoolId", {
             schoolId: user.schoolId,
           });
         }
+      } else if (user.role === UserRole.UNIVERSITY_STAFF) {
+        // Работник вуза: все проекты со всех школ (без фильтрации)
       }
-      // Admin sees all (no filter)
+      // Админ: видит все проекты (без фильтрации)
 
       const projects = await query.getMany();
       res.send(projects);
-    } catch (error) {
+    } catch {
       res.status(500).send({ message: "Error fetching projects" });
     }
   };
@@ -71,7 +70,7 @@ class ProjectController {
         relations: ["owner", "members", "files"],
       });
       res.send(project);
-    } catch (error) {
+    } catch {
       res.status(404).send({ message: "Project not found" });
     }
   };
@@ -106,7 +105,7 @@ class ProjectController {
     const user = await userRepository.findOneBy({ id: userId });
     if (!user) return res.status(404).send("User not found");
 
-    project.owner = user;
+    project.ownerId = userId;
     project.members = [user]; // Owner is automatically a member
 
     const projectRepository = AppDataSource.getRepository(Project);
@@ -128,7 +127,7 @@ class ProjectController {
         where: { id },
         relations: ["members"],
       });
-    } catch (error) {
+    } catch {
       res.status(404).send({ message: "Project not found" });
       return;
     }
@@ -165,7 +164,7 @@ class ProjectController {
         where: { id },
         relations: ["owner"],
       });
-    } catch (error) {
+    } catch {
       res.status(404).send({ message: "Project not found" });
       return;
     }
@@ -206,7 +205,7 @@ class ProjectController {
 
     try {
       await projectRepository.save(project);
-    } catch (error) {
+    } catch {
       res.status(500).send({ message: "Error updating project" });
       return;
     }
@@ -232,7 +231,7 @@ class ProjectController {
     let project;
     try {
       project = await projectRepository.findOneOrFail({ where: { id } });
-    } catch (error) {
+    } catch {
       res.status(404).send({ message: "Project not found" });
       return;
     }
@@ -241,7 +240,7 @@ class ProjectController {
 
     try {
       await projectRepository.save(project);
-    } catch (error) {
+    } catch {
       res.status(500).send({ message: "Error updating project status" });
       return;
     }
@@ -262,7 +261,7 @@ class ProjectController {
     let project;
     try {
       project = await projectRepository.findOneOrFail({ where: { id } });
-    } catch (error) {
+    } catch {
       res.status(404).send({ message: "Project not found" });
       return;
     }
@@ -292,7 +291,7 @@ class ProjectController {
       const project = await projectRepository.findOneOrFail({ where: { id } });
       await projectRepository.remove(project);
       res.status(204).send();
-    } catch (error) {
+    } catch {
       res.status(404).send({ message: "Project not found" });
     }
   };

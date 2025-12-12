@@ -8,6 +8,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   JoinColumn,
+  JoinTable,
 } from "typeorm";
 import { User } from "./User";
 import { File } from "./File";
@@ -56,9 +57,14 @@ export class Project {
   schoolClassId?: number;
 
   @ManyToOne(() => User, (user) => user.ownedProjects)
+  @JoinColumn({ name: "ownerId" })
   owner!: User;
 
+  @Column()
+  ownerId!: number;
+
   @ManyToMany(() => User, (user) => user.memberProjects)
+  @JoinTable()
   members!: User[];
 
   @OneToMany(() => File, (file) => file.project)

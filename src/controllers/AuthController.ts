@@ -5,7 +5,6 @@ import { School } from "../entities/School";
 import { Invitation } from "../entities/Invitation";
 import * as jwt from "jsonwebtoken";
 import * as bcrypt from "bcryptjs";
-import { validate } from "class-validator";
 import * as crypto from "crypto";
 
 class AuthController {
@@ -46,7 +45,7 @@ class AuthController {
 
     try {
       user = await userRepository.findOneOrFail({ where: { email } });
-    } catch (error) {
+    } catch {
       res.status(401).send({ message: "Invalid credentials" });
       return;
     }
@@ -102,9 +101,8 @@ class AuthController {
           res.status(400).send({ message: "School not found" });
           return;
         }
-        user.school = school;
         user.schoolId = school.id;
-      } catch (error) {
+      } catch {
         res.status(400).send({ message: "Invalid invitation token" });
         return;
       }
@@ -123,7 +121,7 @@ class AuthController {
     const userRepository = AppDataSource.getRepository(User);
     try {
       await userRepository.save(user);
-    } catch (e) {
+    } catch {
       res.status(409).send({ message: "Email already in use" });
       return;
     }

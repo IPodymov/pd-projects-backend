@@ -11,6 +11,6 @@ router.post("/", [checkJwt, checkRole([UserRole.ADMIN])], UserController.createU
 router.delete("/:id", [checkJwt, checkRole([UserRole.ADMIN])], UserController.deleteUser);
 router.patch("/:id", [checkJwt], UserController.updateUser);
 router.patch("/:id/role", [checkJwt, checkRole([UserRole.ADMIN])], UserController.changeRole);
-router.post("/github/link", [checkJwt], UserController.linkGithub);
+
 
 export default router;
