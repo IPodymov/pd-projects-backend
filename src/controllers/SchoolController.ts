@@ -4,6 +4,28 @@ import { School } from "../entities/School";
 import { SchoolClass } from "../entities/SchoolClass";
 import { ILike } from "typeorm";
 
+// Вспомогательная функция для создания стандартных классов
+async function createDefaultClassesForSchool(schoolId: number) {
+  const classRepository = AppDataSource.getRepository(SchoolClass);
+
+  // Проверить, есть ли уже классы у этой школы
+  const existingClasses = await classRepository.find({
+    where: { schoolId },
+  });
+
+  if (existingClasses.length === 0) {
+    // Создать 3 стандартных класса
+    const defaultClasses = ["9 класс", "10 класс", "11 класс"];
+
+    for (const className of defaultClasses) {
+      const schoolClass = new SchoolClass();
+      schoolClass.name = className;
+      schoolClass.schoolId = schoolId;
+      await classRepository.save(schoolClass);
+    }
+  }
+}
+
 class SchoolController {
   // Получение списка всех школ с опциональным поиском (публичный доступ для регистрации)
   static listSchools = async (req: Request, res: Response) => {
@@ -126,7 +148,6 @@ class SchoolController {
     }
 
     const schoolRepository = AppDataSource.getRepository(School);
-    const classRepository = AppDataSource.getRepository(SchoolClass);
     const school = new School();
     school.number = number;
     school.name = name;
@@ -136,13 +157,7 @@ class SchoolController {
       await schoolRepository.save(school);
 
       // Автоматически создать 3 класса для новой школы
-      const defaultClasses = ["9 класс", "10 класс", "11 класс"];
-      for (const className of defaultClasses) {
-        const schoolClass = new SchoolClass();
-        schoolClass.name = className;
-        schoolClass.schoolId = school.id;
-        await classRepository.save(schoolClass);
-      }
+      await createDefaultClassesForSchool(school.id);
 
       // Загрузить школу с классами для ответа
       const schoolWithClasses = await schoolRepository.findOne({

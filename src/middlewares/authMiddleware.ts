@@ -7,7 +7,15 @@ export const checkJwt = (req: Request, res: Response, next: NextFunction) => {
   let jwtPayload;
 
   try {
+    if (!token) {
+      res.status(401).send({ message: "Authorization header missing" });
+      return;
+    }
     const bearer = token.split(" ")[1];
+    if (!bearer) {
+      res.status(401).send({ message: "Bearer token missing" });
+      return;
+    }
     jwtPayload = <any>jwt.verify(bearer, process.env.JWT_SECRET || "secret");
     res.locals.jwtPayload = jwtPayload;
   } catch {

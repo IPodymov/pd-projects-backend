@@ -65,7 +65,8 @@ class ChatController {
         where: { id: chatId },
       });
 
-      if (chat.schoolClassId !== user.schoolClassId) {
+      // Проверить принадлежность к классу (только если у пользователя есть schoolClassId)
+      if (user.schoolClassId && chat.schoolClassId !== user.schoolClassId) {
         return res.status(403).send({ message: "Access denied" });
       }
 

@@ -250,6 +250,7 @@ class ProjectController {
 
   static uploadFile = async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
+    const userId = res.locals.jwtPayload.userId;
     const { type } = req.body; // document or presentation
 
     if (!req.file) {
@@ -260,9 +261,21 @@ class ProjectController {
     const projectRepository = AppDataSource.getRepository(Project);
     let project;
     try {
-      project = await projectRepository.findOneOrFail({ where: { id } });
+      project = await projectRepository.findOneOrFail({
+        where: { id },
+        relations: ["owner", "members"],
+      });
     } catch {
       res.status(404).send({ message: "Project not found" });
+      return;
+    }
+
+    // Проверить что пользователь - владелец или член команды
+    const isMember =
+      project.owner.id === userId ||
+      project.members.some((m) => m.id === userId);
+    if (!isMember) {
+      res.status(403).send({ message: "Not authorized to upload files" });
       return;
     }
 
@@ -281,11 +294,6 @@ class ProjectController {
   static deleteProject = async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
     const projectRepository = AppDataSource.getRepository(Project);
-
-    if (isNaN(id)) {
-      res.status(400).send({ message: "Invalid project ID" });
-      return;
-    }
 
     try {
       const project = await projectRepository.findOneOrFail({ where: { id } });

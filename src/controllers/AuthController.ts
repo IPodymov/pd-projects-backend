@@ -119,9 +119,21 @@ class AuthController {
 
   static register = async (req: Request, res: Response) => {
     const { name, email, password, schoolId, schoolClassId, token } = req.body;
+
+    // Валидация обязательных полей
+    if (!name || !email || !password) {
+      res.status(400).send({ message: "Name, email, and password are required" });
+      return;
+    }
+
+    if (password.length < 6) {
+      res.status(400).send({ message: "Password must be at least 6 characters" });
+      return;
+    }
+
     const user = new User();
-    user.name = name;
-    user.email = email;
+    user.name = name.trim();
+    user.email = email.trim().toLowerCase();
     user.password = bcrypt.hashSync(password, 8);
 
     if (token) {
@@ -175,17 +187,26 @@ class AuthController {
       return;
     }
 
+    // Перезагрузить пользователя с отношениями для корректной куки
+    const savedUser = await userRepository.findOne({
+      where: { id: user.id },
+      relations: ["school", "schoolClass"],
+    });
+
     const jwtToken = jwt.sign(
       { userId: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET || "secret",
       { expiresIn: "1h" }
     );
 
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, ...userWithoutPassword } = savedUser!;
 
     res.cookie("user", JSON.stringify(userWithoutPassword), {
       maxAge: 3600000,
       httpOnly: false,
+      sameSite: "lax",
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
     });
 
     res.status(201).send({

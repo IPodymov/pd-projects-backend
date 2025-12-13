@@ -158,11 +158,22 @@ class UserController {
 
   static createUser = async (req: Request, res: Response) => {
     const { name, email, password, role, schoolId } = req.body;
+
+    if (!name || !email || !password) {
+      res.status(400).send({ message: "Name, email, and password are required" });
+      return;
+    }
+
+    if (password.length < 6) {
+      res.status(400).send({ message: "Password must be at least 6 characters" });
+      return;
+    }
+
     const user = new User();
-    user.name = name;
-    user.email = email;
+    user.name = name.trim();
+    user.email = email.trim().toLowerCase();
     user.password = bcrypt.hashSync(password, 8);
-    user.role = role;
+    user.role = role || UserRole.STUDENT;
     user.schoolId = schoolId;
 
     const userRepository = AppDataSource.getRepository(User);
@@ -240,9 +251,13 @@ class UserController {
         res.status(409).send({ message: "Email already in use" });
         return;
       }
-      user.email = email;
+      user.email = email.trim().toLowerCase();
     }
-    if (password !== undefined) {
+    if (password !== undefined && password.trim() !== "") {
+      if (password.length < 6) {
+        res.status(400).send({ message: "Password must be at least 6 characters" });
+        return;
+      }
       user.password = bcrypt.hashSync(password, 8);
     }
 
