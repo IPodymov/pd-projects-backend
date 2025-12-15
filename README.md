@@ -9,6 +9,7 @@ Backend для системы управления проектами.
 - [Установка и запуск](docs/installation.md)
 - [Авторизация и Пользователи](docs/auth.md)
 - [Проекты](docs/projects.md)
+- [Учебные заведения и Группы](docs/institutions.md)
 - [База данных](docs/database.md)
 
 ## Стек технологий
@@ -17,4 +18,3 @@ Backend для системы управления проектами.
 - TypeORM
 - PostgreSQL
 - JWT Authentication
-

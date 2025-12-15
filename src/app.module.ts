@@ -9,6 +9,8 @@ import { AuthModule } from './auth/auth.module';
 import { User } from './users/entities/user.entity';
 import { Role } from './roles/entities/role.entity';
 import { ProjectsModule } from './projects/projects.module';
+import { InstitutionsModule } from './institutions/institutions.module';
+import { StudentGroupsModule } from './student-groups/student-groups.module';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { ProjectsModule } from './projects/projects.module';
     UsersModule,
     AuthModule,
     ProjectsModule,
+    InstitutionsModule,
+    StudentGroupsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
