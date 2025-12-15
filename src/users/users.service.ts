@@ -5,6 +5,7 @@ import {CreateUserDto} from './dto/create-user.dto';
 import {UpdateUserDto} from './dto/update-user.dto';
 import {User} from './entities/user.entity';
 import {RolesService} from '../roles/roles.service';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class UsersService {
@@ -59,6 +60,11 @@ export class UsersService {
             resetPasswordToken: null,
             resetPasswordExpires: null
         });
+    }
+
+    async updateProfile(userId: number, dto: UpdateProfileDto) {
+        await this.userRepository.update(userId, dto);
+        return this.getProfile(userId);
     }
 
     create(createUserDto: CreateUserDto) {

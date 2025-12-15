@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req } fro
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('users')
@@ -12,6 +13,12 @@ export class UsersController {
   @Get('profile')
   getProfile(@Req() req) {
       return this.usersService.getProfile(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('profile')
+  updateProfile(@Req() req, @Body() updateProfileDto: UpdateProfileDto) {
+      return this.usersService.updateProfile(req.user.id, updateProfileDto);
   }
 
   @Post()
