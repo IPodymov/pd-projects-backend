@@ -18,3 +18,13 @@ Backend для системы управления проектами.
 - TypeORM
 - PostgreSQL
 - JWT Authentication
+
+## Тестовые данные (Seeding)
+
+При запуске приложения автоматически создаются следующие пользователи:
+
+- **Admin**: `admin@example.com` / `password123`
+- **Сотрудник**: `staff@example.com` / `password123`
+- **Студент**: `student@example.com` / `password123`
+
+А также тестовый вуз, группа и проекты.
