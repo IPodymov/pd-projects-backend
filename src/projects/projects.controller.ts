@@ -3,6 +3,7 @@ import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 
 @Controller('projects')
 export class ProjectsController {
@@ -14,9 +15,10 @@ export class ProjectsController {
     return this.projectsService.create(createProjectDto, req.user);
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
   @Get()
-  findAll() {
-    return this.projectsService.findAll();
+  findAll(@Req() req) {
+    return this.projectsService.findAll(req.user);
   }
 
   @Get(':id')

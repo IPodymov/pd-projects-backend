@@ -35,8 +35,26 @@ export class ProjectsService {
     return await this.projectRepository.save(project);
   }
 
-  async findAll() {
-    return await this.projectRepository.find({ relations: ['links', 'author', 'history'] });
+  async findAll(user?: User) {
+    const query = this.projectRepository.createQueryBuilder('project')
+        .leftJoinAndSelect('project.links', 'links')
+        .leftJoinAndSelect('project.author', 'author')
+        .leftJoinAndSelect('project.history', 'history');
+
+    if (user) {
+        const isAdminOrStaff = user.roles.some(role => ['ADMIN', 'UNIVERSITY_STAFF'].includes(role.value));
+        if (!isAdminOrStaff) {
+            // Student: return APPROVED or Own
+            query.where('project.status = :status', { status: ProjectStatus.APPROVED })
+                 .orWhere('project.author.id = :userId', { userId: user.id });
+        }
+        // If Admin/Staff, no where clause needed (return all)
+    } else {
+        // Public (unauthenticated): only APPROVED
+        query.where('project.status = :status', { status: ProjectStatus.APPROVED });
+    }
+
+    return await query.getMany();
   }
 
   async findOne(id: number) {
