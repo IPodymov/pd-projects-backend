@@ -11,6 +11,7 @@ import { Role } from './roles/entities/role.entity';
 import { ProjectsModule } from './projects/projects.module';
 import { InstitutionsModule } from './institutions/institutions.module';
 import { StudentGroupsModule } from './student-groups/student-groups.module';
+import { SeedModule } from './seed/seed.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { StudentGroupsModule } from './student-groups/student-groups.module';
     ProjectsModule,
     InstitutionsModule,
     StudentGroupsModule,
+    SeedModule,
   ],
   controllers: [AppController],
   providers: [AppService],

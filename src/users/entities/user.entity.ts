@@ -23,7 +23,7 @@ export class User {
     @Column({nullable: true})
     middleName: string;
 
-    @Column({nullable: true})
+    @Column({ nullable: true, type: 'varchar' })
     resetPasswordToken: string | null;
 
     @Column({nullable: true, type: 'timestamp'}) // Using timestamp for expiration
