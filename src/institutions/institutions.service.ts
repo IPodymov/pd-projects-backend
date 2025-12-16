@@ -8,7 +8,8 @@ import { Institution } from './entities/institution.entity';
 @Injectable()
 export class InstitutionsService {
   constructor(
-      @InjectRepository(Institution) private institutionRepository: Repository<Institution>
+    @InjectRepository(Institution)
+    private institutionRepository: Repository<Institution>,
   ) {}
 
   async create(createInstitutionDto: CreateInstitutionDto) {
@@ -20,9 +21,12 @@ export class InstitutionsService {
   }
 
   async findOne(id: number) {
-    const institution = await this.institutionRepository.findOne({ where: { id }, relations: ['groups'] });
+    const institution = await this.institutionRepository.findOne({
+      where: { id },
+      relations: ['groups'],
+    });
     if (!institution) {
-        throw new NotFoundException(`Institution with ID ${id} not found`);
+      throw new NotFoundException(`Institution with ID ${id} not found`);
     }
     return institution;
   }

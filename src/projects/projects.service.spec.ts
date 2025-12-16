@@ -6,12 +6,19 @@ import { ProjectLink } from './entities/project-link.entity';
 import { ProjectHistory } from './entities/project-history.entity';
 import { User } from '../users/entities/user.entity';
 import { NotFoundException } from '@nestjs/common';
+import { UsersService } from '../users/users.service';
 
 const mockProjectRepository = {
   save: jest.fn(),
   find: jest.fn(),
   findOne: jest.fn(),
   remove: jest.fn(),
+  createQueryBuilder: jest.fn(() => ({
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    orWhere: jest.fn().mockReturnThis(),
+    getMany: jest.fn().mockResolvedValue([]),
+  })),
 };
 
 const mockProjectLinkRepository = {
@@ -20,6 +27,10 @@ const mockProjectLinkRepository = {
 
 const mockProjectHistoryRepository = {
   save: jest.fn(),
+};
+
+const mockUsersService = {
+  getProfile: jest.fn(),
 };
 
 describe('ProjectsService', () => {
@@ -41,6 +52,10 @@ describe('ProjectsService', () => {
           provide: getRepositoryToken(ProjectHistory),
           useValue: mockProjectHistoryRepository,
         },
+        {
+          provide: UsersService,
+          useValue: mockUsersService,
+        },
       ],
     }).compile();
 
@@ -53,9 +68,18 @@ describe('ProjectsService', () => {
 
   describe('create', () => {
     it('should create a project with PENDING status for student', async () => {
-      const createProjectDto = { title: 'Test Project', description: 'Desc', links: [] };
+      const createProjectDto = {
+        title: 'Test Project',
+        description: 'Desc',
+        links: [],
+      };
       const user = { id: 1, roles: [{ value: 'STUDENT' }] } as User;
-      const savedProject = { id: 1, ...createProjectDto, status: ProjectStatus.PENDING, author: user };
+      const savedProject = {
+        id: 1,
+        ...createProjectDto,
+        status: ProjectStatus.PENDING,
+        author: user,
+      };
 
       mockProjectRepository.save.mockResolvedValue(savedProject);
 
@@ -66,9 +90,18 @@ describe('ProjectsService', () => {
     });
 
     it('should create a project with APPROVED status for admin', async () => {
-      const createProjectDto = { title: 'Test Project', description: 'Desc', links: [] };
+      const createProjectDto = {
+        title: 'Test Project',
+        description: 'Desc',
+        links: [],
+      };
       const user = { id: 1, roles: [{ value: 'ADMIN' }] } as User;
-      const savedProject = { id: 1, ...createProjectDto, status: ProjectStatus.APPROVED, author: user };
+      const savedProject = {
+        id: 1,
+        ...createProjectDto,
+        status: ProjectStatus.APPROVED,
+        author: user,
+      };
 
       mockProjectRepository.save.mockResolvedValue(savedProject);
 
@@ -94,4 +127,3 @@ describe('ProjectsService', () => {
     });
   });
 });
-

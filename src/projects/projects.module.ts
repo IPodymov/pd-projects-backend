@@ -10,9 +10,9 @@ import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
-      TypeOrmModule.forFeature([Project, ProjectLink, ProjectHistory]),
-      AuthModule,
-      UsersModule
+    TypeOrmModule.forFeature([Project, ProjectLink, ProjectHistory]),
+    AuthModule,
+    UsersModule,
   ],
   controllers: [ProjectsController],
   providers: [ProjectsService],

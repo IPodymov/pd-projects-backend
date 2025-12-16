@@ -1,18 +1,29 @@
-import {Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn} from "typeorm";
-import {Institution} from "../../institutions/entities/institution.entity";
-import {User} from "../../users/entities/user.entity";
+import {
+  Column,
+  Entity,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { Institution } from '../../institutions/entities/institution.entity';
+import { User } from '../../users/entities/user.entity';
 
 @Entity('student_groups')
 export class StudentGroup {
-    @PrimaryGeneratedColumn()
-    id: number;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-    @Column()
-    name: string;
+  @Column()
+  name: string;
 
-    @ManyToOne(() => Institution, (institution) => institution.groups, {onDelete: 'CASCADE'})
-    institution: Institution;
+  @Column({ nullable: true })
+  grade: number;
 
-    @OneToMany(() => User, (user) => user.group)
-    students: User[];
+  @ManyToOne(() => Institution, (institution) => institution.groups, {
+    onDelete: 'CASCADE',
+  })
+  institution: Institution;
+
+  @OneToMany(() => User, (user) => user.group)
+  students: User[];
 }

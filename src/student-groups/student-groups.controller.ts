@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { StudentGroupsService } from './student-groups.service';
 import { CreateStudentGroupDto } from './dto/create-student-group.dto';
 import { UpdateStudentGroupDto } from './dto/update-student-group.dto';
@@ -26,7 +35,10 @@ export class StudentGroupsController {
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateStudentGroupDto: UpdateStudentGroupDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateStudentGroupDto: UpdateStudentGroupDto,
+  ) {
     return this.studentGroupsService.update(+id, updateStudentGroupDto);
   }
 

@@ -1,39 +1,50 @@
-import {Controller, Get, Post, Body, Patch, Param, Delete, UseGuards} from '@nestjs/common';
-import {InstitutionsService} from './institutions.service';
-import {CreateInstitutionDto} from './dto/create-institution.dto';
-import {UpdateInstitutionDto} from './dto/update-institution.dto';
-import {JwtAuthGuard} from '../auth/jwt-auth.guard';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
+import { InstitutionsService } from './institutions.service';
+import { CreateInstitutionDto } from './dto/create-institution.dto';
+import { UpdateInstitutionDto } from './dto/update-institution.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('institutions')
 export class InstitutionsController {
-    constructor(private readonly institutionsService: InstitutionsService) {
-    }
+  constructor(private readonly institutionsService: InstitutionsService) {}
 
-    @UseGuards(JwtAuthGuard)
-    @Post()
-    create(@Body() createInstitutionDto: CreateInstitutionDto) {
-        return this.institutionsService.create(createInstitutionDto);
-    }
+  @UseGuards(JwtAuthGuard)
+  @Post()
+  create(@Body() createInstitutionDto: CreateInstitutionDto) {
+    return this.institutionsService.create(createInstitutionDto);
+  }
 
-    @Get()
-    findAll() {
-        return this.institutionsService.findAll();
-    }
+  @Get()
+  findAll() {
+    return this.institutionsService.findAll();
+  }
 
-    @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.institutionsService.findOne(+id);
-    }
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.institutionsService.findOne(+id);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Patch(':id')
-    update(@Param('id') id: string, @Body() updateInstitutionDto: UpdateInstitutionDto) {
-        return this.institutionsService.update(+id, updateInstitutionDto);
-    }
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() updateInstitutionDto: UpdateInstitutionDto,
+  ) {
+    return this.institutionsService.update(+id, updateInstitutionDto);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.institutionsService.remove(+id);
-    }
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.institutionsService.remove(+id);
+  }
 }

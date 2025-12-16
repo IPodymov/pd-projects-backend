@@ -79,7 +79,8 @@
 {
   "firstName": "Иван",
   "lastName": "Иванов",
-  "middleName": "Иванович"
+  "middleName": "Иванович",
+  "groupId": 1
 }
 ```
 

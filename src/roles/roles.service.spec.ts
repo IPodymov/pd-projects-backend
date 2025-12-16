@@ -52,9 +52,10 @@ describe('RolesService', () => {
 
       const result = await service.getRoleByValue(value);
 
-      expect(mockRoleRepository.findOne).toHaveBeenCalledWith({ where: { value } });
+      expect(mockRoleRepository.findOne).toHaveBeenCalledWith({
+        where: { value },
+      });
       expect(result).toEqual(role);
     });
   });
 });
-

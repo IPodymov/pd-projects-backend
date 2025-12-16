@@ -14,12 +14,12 @@ import { Project } from '../projects/entities/project.entity';
 
 @Module({
   imports: [
-      TypeOrmModule.forFeature([User, Role, Institution, StudentGroup, Project]),
-      UsersModule,
-      RolesModule,
-      InstitutionsModule,
-      StudentGroupsModule,
-      ProjectsModule
+    TypeOrmModule.forFeature([User, Role, Institution, StudentGroup, Project]),
+    UsersModule,
+    RolesModule,
+    InstitutionsModule,
+    StudentGroupsModule,
+    ProjectsModule,
   ],
   providers: [SeedService],
 })

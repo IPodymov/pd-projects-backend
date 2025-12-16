@@ -3,7 +3,7 @@ import { UsersService } from './users.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { RolesService } from '../roles/roles.service';
-import { Repository } from 'typeorm';
+import { StudentGroupsService } from '../student-groups/student-groups.service';
 
 const mockUserRepository = {
   create: jest.fn(),
@@ -16,10 +16,12 @@ const mockRolesService = {
   getRoleByValue: jest.fn(),
 };
 
+const mockStudentGroupsService = {
+  findOne: jest.fn(),
+};
+
 describe('UsersService', () => {
   let service: UsersService;
-  let repository: Repository<User>;
-  let rolesService: RolesService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -33,12 +35,14 @@ describe('UsersService', () => {
           provide: RolesService,
           useValue: mockRolesService,
         },
+        {
+          provide: StudentGroupsService,
+          useValue: mockStudentGroupsService,
+        },
       ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
-    repository = module.get<Repository<User>>(getRepositoryToken(User));
-    rolesService = module.get<RolesService>(RolesService);
   });
 
   it('should be defined', () => {
@@ -73,7 +77,10 @@ describe('UsersService', () => {
 
       const result = await service.getUserByEmail(email);
 
-      expect(mockUserRepository.findOne).toHaveBeenCalledWith({ where: { email }, relations: ['roles'] });
+      expect(mockUserRepository.findOne).toHaveBeenCalledWith({
+        where: { email },
+        relations: ['roles'],
+      });
       expect(result).toEqual(user);
     });
   });
@@ -81,16 +88,25 @@ describe('UsersService', () => {
   describe('getProfile', () => {
     it('should return user profile without password', async () => {
       const id = 1;
-      const user = { id, email: 'test@test.com', password: 'hashedPassword', roles: [], projects: [] };
-      const { password, ...expectedProfile } = user;
+      const user = {
+        id,
+        email: 'test@test.com',
+        password: 'hashedPassword',
+        roles: [],
+        projects: [],
+      };
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _password, ...expectedProfile } = user;
 
       mockUserRepository.findOne.mockResolvedValue(user);
 
       const result = await service.getProfile(id);
 
-      expect(mockUserRepository.findOne).toHaveBeenCalledWith({ where: { id }, relations: ['roles', 'projects'] });
+      expect(mockUserRepository.findOne).toHaveBeenCalledWith({
+        where: { id },
+        relations: ['roles', 'projects', 'group', 'group.institution'],
+      });
       expect(result).toEqual(expectedProfile);
     });
   });
 });
-

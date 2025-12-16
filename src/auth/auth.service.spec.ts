@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
-import { UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
+import { UnauthorizedException, HttpException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
 jest.mock('bcrypt'); // Mock bcrypt module
@@ -21,8 +21,6 @@ const mockJwtService = {
 
 describe('AuthService', () => {
   let service: AuthService;
-  let usersService: UsersService;
-  let jwtService: JwtService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -40,8 +38,6 @@ describe('AuthService', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    usersService = module.get<UsersService>(UsersService);
-    jwtService = module.get<JwtService>(JwtService);
   });
 
   it('should be defined', () => {
@@ -51,7 +47,12 @@ describe('AuthService', () => {
   describe('login', () => {
     it('should return a token if validation is successful', async () => {
       const userDto = { email: 'test@test.com', password: 'password' };
-      const user = { id: 1, email: 'test@test.com', password: 'hashedPassword', roles: [] };
+      const user = {
+        id: 1,
+        email: 'test@test.com',
+        password: 'hashedPassword',
+        roles: [],
+      };
       const token = 'jwt_token';
 
       mockUsersService.getUserByEmail.mockResolvedValue(user);
@@ -65,12 +66,19 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException if validation fails', async () => {
       const userDto = { email: 'test@test.com', password: 'wrongPassword' };
-      const user = { id: 1, email: 'test@test.com', password: 'hashedPassword', roles: [] };
+      const user = {
+        id: 1,
+        email: 'test@test.com',
+        password: 'hashedPassword',
+        roles: [],
+      };
 
       mockUsersService.getUserByEmail.mockResolvedValue(user);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false); // Use mocked implementation
 
-      await expect(service.login(userDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(userDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 
@@ -97,7 +105,9 @@ describe('AuthService', () => {
 
       mockUsersService.getUserByEmail.mockResolvedValue(user);
 
-      await expect(service.registration(userDto)).rejects.toThrow(HttpException);
+      await expect(service.registration(userDto)).rejects.toThrow(
+        HttpException,
+      );
     });
   });
 });
