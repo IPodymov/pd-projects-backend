@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -12,7 +12,7 @@ import { StudentGroup } from '../student-groups/entities/student-group.entity';
 import { Project, ProjectStatus } from '../projects/entities/project.entity';
 
 @Injectable()
-export class SeedService implements OnModuleInit {
+export class SeedService {
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(Role) private roleRepository: Repository<Role>,
@@ -23,7 +23,7 @@ export class SeedService implements OnModuleInit {
     @InjectRepository(Project) private projectRepository: Repository<Project>,
   ) {}
 
-  async onModuleInit() {
+  async seed() {
     await this.seedUsers();
     await this.seedInstitutionsAndGroups();
     await this.seedProjects();
@@ -113,9 +113,27 @@ export class SeedService implements OnModuleInit {
       await this.userRepository.save(student);
       console.log('Seeded Student user');
     }
+
+    // School Student
+    const schoolStudentEmail = 'school_student@example.com';
+    let schoolStudent = await this.userRepository.findOne({
+      where: { email: schoolStudentEmail },
+    });
+    if (!schoolStudent) {
+      schoolStudent = this.userRepository.create({
+        email: schoolStudentEmail,
+        password: password,
+        firstName: 'School',
+        lastName: 'Student',
+        roles: [studentRole],
+      });
+      await this.userRepository.save(schoolStudent);
+      console.log('Seeded School Student user');
+    }
   }
 
   private async seedInstitutionsAndGroups() {
+    // University
     const uniName = 'Test University';
     let uni = await this.institutionRepository.findOne({
       where: { name: uniName },
@@ -126,7 +144,7 @@ export class SeedService implements OnModuleInit {
         type: InstitutionType.UNIVERSITY,
       });
       await this.institutionRepository.save(uni);
-      console.log('Seeded Institution');
+      console.log('Seeded Institution (University)');
     }
 
     const groupName = 'Test Group 101';
@@ -137,13 +155,41 @@ export class SeedService implements OnModuleInit {
       group = this.studentGroupRepository.create({
         name: groupName,
         institution: uni,
-        grade: 7,
+        grade: 1, // University usually doesn't use grade 1-11 like schools, but let's keep it simple or null
       });
       await this.studentGroupRepository.save(group);
-      console.log('Seeded Student Group');
+      console.log('Seeded Student Group (University)');
     }
 
-    // Assign student to group
+    // School
+    const schoolName = 'Test School';
+    let school = await this.institutionRepository.findOne({
+      where: { name: schoolName },
+    });
+    if (!school) {
+      school = this.institutionRepository.create({
+        name: schoolName,
+        type: InstitutionType.SCHOOL,
+      });
+      await this.institutionRepository.save(school);
+      console.log('Seeded Institution (School)');
+    }
+
+    const schoolGroupName = '9A';
+    let schoolGroup = await this.studentGroupRepository.findOne({
+      where: { name: schoolGroupName, institution: { id: school.id } },
+    });
+    if (!schoolGroup) {
+      schoolGroup = this.studentGroupRepository.create({
+        name: schoolGroupName,
+        institution: school,
+        grade: 9,
+      });
+      await this.studentGroupRepository.save(schoolGroup);
+      console.log('Seeded Student Group (School)');
+    }
+
+    // Assign student to university group
     const student = await this.userRepository.findOne({
       where: { email: 'student@example.com' },
       relations: ['group'],
@@ -151,46 +197,68 @@ export class SeedService implements OnModuleInit {
     if (student && !student.group) {
       student.group = group;
       await this.userRepository.save(student);
-      console.log('Assigned Student to Group');
+      console.log('Assigned Student to University Group');
+    }
+
+    // Assign school student to school group
+    const schoolStudent = await this.userRepository.findOne({
+      where: { email: 'school_student@example.com' },
+      relations: ['group'],
+    });
+    if (schoolStudent && !schoolStudent.group) {
+      schoolStudent.group = schoolGroup;
+      await this.userRepository.save(schoolStudent);
+      console.log('Assigned School Student to School Group');
     }
   }
 
   private async seedProjects() {
+    // University Student Projects
     const student = await this.userRepository.findOne({
       where: { email: 'student@example.com' },
+      relations: ['group', 'group.institution'],
     });
-    if (!student) return;
-
-    const projectTitle = 'Student Project 1';
-    let project = await this.projectRepository.findOne({
-      where: { title: projectTitle },
-    });
-    if (!project) {
-      project = this.projectRepository.create({
-        title: projectTitle,
-        description: 'A project created by a student, pending moderation.',
-        status: ProjectStatus.PENDING,
-        author: student,
-        links: [],
-      });
-      await this.projectRepository.save(project);
-      console.log('Seeded Pending Project');
+    if (student) {
+        const projectTitle = 'University Project 1';
+        let project = await this.projectRepository.findOne({
+          where: { title: projectTitle },
+        });
+        if (!project) {
+          project = this.projectRepository.create({
+            title: projectTitle,
+            description: 'A project created by a university student.',
+            status: ProjectStatus.APPROVED,
+            author: student,
+            links: [],
+            institution: student.group?.institution,
+          });
+          await this.projectRepository.save(project);
+          console.log('Seeded University Project');
+        }
     }
 
-    const approvedProjectTitle = 'Approved Project';
-    let approvedProject = await this.projectRepository.findOne({
-      where: { title: approvedProjectTitle },
+    // School Student Projects
+    const schoolStudent = await this.userRepository.findOne({
+      where: { email: 'school_student@example.com' },
+      relations: ['group', 'group.institution'],
     });
-    if (!approvedProject) {
-      approvedProject = this.projectRepository.create({
-        title: approvedProjectTitle,
-        description: 'An approved project.',
-        status: ProjectStatus.APPROVED,
-        author: student,
-        links: [],
-      });
-      await this.projectRepository.save(approvedProject);
-      console.log('Seeded Approved Project');
+    if (schoolStudent) {
+        const schoolProjectTitle = 'School Project 1';
+        let schoolProject = await this.projectRepository.findOne({
+          where: { title: schoolProjectTitle },
+        });
+        if (!schoolProject) {
+          schoolProject = this.projectRepository.create({
+            title: schoolProjectTitle,
+            description: 'A project created by a school student.',
+            status: ProjectStatus.APPROVED,
+            author: schoolStudent,
+            links: [],
+            institution: schoolStudent.group?.institution,
+          });
+          await this.projectRepository.save(schoolProject);
+          console.log('Seeded School Project');
+        }
     }
   }
 }

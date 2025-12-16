@@ -12,6 +12,7 @@ import {
 import { User } from '../../users/entities/user.entity';
 import { ProjectLink } from './project-link.entity';
 import { ProjectHistory } from './project-history.entity';
+import { Institution } from '../../institutions/entities/institution.entity';
 
 export enum ProjectStatus {
   PENDING = 'PENDING',
@@ -39,6 +40,9 @@ export class Project {
 
   @ManyToOne(() => User, { nullable: false })
   author: User;
+
+  @ManyToOne(() => Institution, { nullable: true })
+  institution: Institution;
 
   @ManyToMany(() => User)
   @JoinTable()

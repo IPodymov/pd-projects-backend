@@ -14,6 +14,7 @@ import { ProjectLink } from './entities/project-link.entity';
 import { ProjectHistory } from './entities/project-history.entity';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
+import { InstitutionType } from '../institutions/entities/institution.entity';
 
 @Injectable()
 export class ProjectsService {
@@ -27,10 +28,11 @@ export class ProjectsService {
   ) {}
 
   async create(createProjectDto: CreateProjectDto, user: User) {
+    const fullUser = await this.usersService.getProfile(user.id);
+
     // Check if student is allowed to create project (Grade >= 7)
     const isStudent = user.roles.some((role) => role.value === 'STUDENT');
     if (isStudent) {
-      const fullUser = await this.usersService.getProfile(user.id);
       if (fullUser && fullUser.group) {
         if (fullUser.group.grade && fullUser.group.grade < 7) {
           throw new ForbiddenException(
@@ -52,6 +54,10 @@ export class ProjectsService {
     project.title = createProjectDto.title;
     project.description = createProjectDto.description;
     project.author = user;
+
+    if (fullUser?.group?.institution) {
+      project.institution = fullUser.group.institution;
+    }
 
     const isStaffOrAdmin = user.roles.some((role) =>
       ['ADMIN', 'UNIVERSITY_STAFF'].includes(role.value),
@@ -75,8 +81,7 @@ export class ProjectsService {
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.links', 'links')
       .leftJoinAndSelect('project.author', 'author')
-      .leftJoinAndSelect('author.group', 'authorGroup')
-      .leftJoinAndSelect('authorGroup.institution', 'authorInstitution')
+      .leftJoinAndSelect('project.institution', 'institution')
       .leftJoinAndSelect('project.members', 'members')
       .leftJoinAndSelect('project.history', 'history');
 
@@ -104,7 +109,7 @@ export class ProjectsService {
           // So: (APPROVED AND same_institution) OR Own
 
           whereCondition =
-            '((project.status = :approvedStatus AND authorInstitution.id = :institutionId) OR (project.author.id = :userId) OR (:userId IN (SELECT "userId" FROM "projects_members_users" WHERE "projectId" = project.id)))';
+            '((project.status = :approvedStatus AND institution.id = :institutionId) OR (project.author.id = :userId) OR (:userId IN (SELECT "userId" FROM "projects_members_users" WHERE "projectId" = project.id)))';
           parameters = {
             ...parameters,
             institutionId: fullUser.group.institution.id,
@@ -148,7 +153,7 @@ export class ProjectsService {
   async joinProject(token: string, user: User) {
     const project = await this.projectRepository.findOne({
       where: { invitationToken: token },
-      relations: ['members', 'author'],
+      relations: ['members', 'author', 'institution'],
     });
     if (!project) {
       throw new NotFoundException('Invalid invitation token');
@@ -160,6 +165,24 @@ export class ProjectsService {
       project.author.id === user.id
     ) {
       throw new BadRequestException('User is already a member of this project');
+    }
+
+    // Check limits based on institution type
+    const institutionType = project.institution?.type;
+    const currentMembersCount = project.members.length + 1; // +1 for author
+
+    if (institutionType === InstitutionType.SCHOOL) {
+      if (currentMembersCount >= 3) {
+        throw new BadRequestException(
+          'Project member limit reached for School (3 members)',
+        );
+      }
+    } else if (institutionType === InstitutionType.UNIVERSITY) {
+      if (currentMembersCount >= 50) {
+        throw new BadRequestException(
+          'Project member limit reached for University (50 members)',
+        );
+      }
     }
 
     project.members.push(user);
