@@ -76,7 +76,7 @@ export class ProjectsService {
     return await this.projectRepository.save(project);
   }
 
-  async findAll(user?: User) {
+  async findAll(user?: User, search?: string, institutionId?: number) {
     const query = this.projectRepository
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.links', 'links')
@@ -85,44 +85,73 @@ export class ProjectsService {
       .leftJoinAndSelect('project.members', 'members')
       .leftJoinAndSelect('project.history', 'history');
 
+    // Поиск по названию
+    if (search) {
+      query.andWhere('LOWER(project.title) LIKE LOWER(:search)', {
+        search: `%${search}%`,
+      });
+    }
+
     if (user) {
       const isAdminOrStaff = user.roles.some((role) =>
         ['ADMIN', 'UNIVERSITY_STAFF'].includes(role.value),
       );
-      if (!isAdminOrStaff) {
-        // Fetch full user details to get group
+      
+      if (isAdminOrStaff) {
+        // Админы и сотрудники вуза видят все проекты
+        // Но могут фильтровать по учебному заведению
+        if (institutionId) {
+          query.andWhere('institution.id = :institutionId', { institutionId });
+        }
+      } else {
+        // Обычные пользователи (студенты)
         const fullUser = await this.usersService.getProfile(user.id);
 
-        // Base condition: APPROVED or Own (author/member)
-        let whereCondition =
-          '(project.status = :approvedStatus) OR (project.author.id = :userId) OR (:userId IN (SELECT "userId" FROM "projects_members_users" WHERE "projectId" = project.id))';
-        let parameters: Record<string, any> = {
-          approvedStatus: ProjectStatus.APPROVED,
+        const conditions: string[] = [];
+        const parameters: Record<string, any> = {
           userId: user.id,
+          approvedStatus: ProjectStatus.APPROVED,
         };
 
-        // If user has a group (and thus institution), filter APPROVED projects by institution
-        if (fullUser && fullUser.group && fullUser.group.institution) {
-          // We want to show APPROVED projects ONLY from the same institution
-          // OR own projects (regardless of institution)
+        // Пользователь видит:
+        // 1. Свои проекты (независимо от статуса и учреждения)
+        conditions.push('project.author.id = :userId');
 
-          // So: (APPROVED AND same_institution) OR Own
+        // 2. Проекты, где он является участником
+        conditions.push(
+          '(:userId IN (SELECT "userId" FROM "projects_members_users" WHERE "projectId" = project.id))',
+        );
 
-          whereCondition =
-            '((project.status = :approvedStatus AND institution.id = :institutionId) OR (project.author.id = :userId) OR (:userId IN (SELECT "userId" FROM "projects_members_users" WHERE "projectId" = project.id)))';
-          parameters = {
-            ...parameters,
-            institutionId: fullUser.group.institution.id,
-          };
+        // 3. Одобренные проекты
+        if (institutionId) {
+          // Если указан institutionId, показываем одобренные проекты только этого учреждения
+          conditions.push(
+            '(project.status = :approvedStatus AND institution.id = :institutionId)',
+          );
+          parameters.institutionId = institutionId;
+        } else if (fullUser?.group?.institution) {
+          // Если у пользователя есть группа и учреждение, показываем одобренные проекты его учреждения
+          conditions.push(
+            '(project.status = :approvedStatus AND institution.id = :userInstitutionId)',
+          );
+          parameters.userInstitutionId = fullUser.group.institution.id;
+        } else {
+          // Если нет группы или учреждения, показываем все одобренные проекты
+          conditions.push('project.status = :approvedStatus');
         }
 
-        query.where(whereCondition, parameters);
+        query.andWhere(`(${conditions.join(' OR ')})`, parameters);
       }
     } else {
-      // Public (unauthenticated): only APPROVED
-      query.where('project.status = :status', {
+      // Публичный доступ (неавторизованные): только одобренные проекты
+      query.andWhere('project.status = :status', {
         status: ProjectStatus.APPROVED,
       });
+      
+      // Фильтрация по учебному заведению для неавторизованных
+      if (institutionId) {
+        query.andWhere('institution.id = :institutionId', { institutionId });
+      }
     }
 
     return await query.getMany();

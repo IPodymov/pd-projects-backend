@@ -219,22 +219,22 @@ export class SeedService {
       relations: ['group', 'group.institution'],
     });
     if (student) {
-        const projectTitle = 'University Project 1';
-        let project = await this.projectRepository.findOne({
-          where: { title: projectTitle },
+      const projectTitle = 'University Project 1';
+      let project = await this.projectRepository.findOne({
+        where: { title: projectTitle },
+      });
+      if (!project) {
+        project = this.projectRepository.create({
+          title: projectTitle,
+          description: 'A project created by a university student.',
+          status: ProjectStatus.APPROVED,
+          author: student,
+          links: [],
+          institution: student.group?.institution,
         });
-        if (!project) {
-          project = this.projectRepository.create({
-            title: projectTitle,
-            description: 'A project created by a university student.',
-            status: ProjectStatus.APPROVED,
-            author: student,
-            links: [],
-            institution: student.group?.institution,
-          });
-          await this.projectRepository.save(project);
-          console.log('Seeded University Project');
-        }
+        await this.projectRepository.save(project);
+        console.log('Seeded University Project');
+      }
     }
 
     // School Student Projects
@@ -243,22 +243,22 @@ export class SeedService {
       relations: ['group', 'group.institution'],
     });
     if (schoolStudent) {
-        const schoolProjectTitle = 'School Project 1';
-        let schoolProject = await this.projectRepository.findOne({
-          where: { title: schoolProjectTitle },
+      const schoolProjectTitle = 'School Project 1';
+      let schoolProject = await this.projectRepository.findOne({
+        where: { title: schoolProjectTitle },
+      });
+      if (!schoolProject) {
+        schoolProject = this.projectRepository.create({
+          title: schoolProjectTitle,
+          description: 'A project created by a school student.',
+          status: ProjectStatus.APPROVED,
+          author: schoolStudent,
+          links: [],
+          institution: schoolStudent.group?.institution,
         });
-        if (!schoolProject) {
-          schoolProject = this.projectRepository.create({
-            title: schoolProjectTitle,
-            description: 'A project created by a school student.',
-            status: ProjectStatus.APPROVED,
-            author: schoolStudent,
-            links: [],
-            institution: schoolStudent.group?.institution,
-          });
-          await this.projectRepository.save(schoolProject);
-          console.log('Seeded School Project');
-        }
+        await this.projectRepository.save(schoolProject);
+        console.log('Seeded School Project');
+      }
     }
   }
 }
