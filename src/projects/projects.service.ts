@@ -96,7 +96,7 @@ export class ProjectsService {
       const isAdminOrStaff = user.roles.some((role) =>
         ['ADMIN', 'UNIVERSITY_STAFF'].includes(role.value),
       );
-      
+
       if (isAdminOrStaff) {
         // Админы и сотрудники вуза видят все проекты
         // Но могут фильтровать по учебному заведению
@@ -130,11 +130,12 @@ export class ProjectsService {
           );
           parameters.institutionId = institutionId;
         } else if (fullUser?.group?.institution) {
-          // Если у пользователя есть группа и учреждение, показываем одобренные проекты его учреждения
+          // Автоматическая фильтрация по типу учреждения пользователя
+          // Пользователь видит только проекты своего типа учреждения (школа или университет)
           conditions.push(
-            '(project.status = :approvedStatus AND institution.id = :userInstitutionId)',
+            '(project.status = :approvedStatus AND institution.type = :institutionType)',
           );
-          parameters.userInstitutionId = fullUser.group.institution.id;
+          parameters.institutionType = fullUser.group.institution.type;
         } else {
           // Если нет группы или учреждения, показываем все одобренные проекты
           conditions.push('project.status = :approvedStatus');
@@ -147,7 +148,7 @@ export class ProjectsService {
       query.andWhere('project.status = :status', {
         status: ProjectStatus.APPROVED,
       });
-      
+
       // Фильтрация по учебному заведению для неавторизованных
       if (institutionId) {
         query.andWhere('institution.id = :institutionId', { institutionId });
