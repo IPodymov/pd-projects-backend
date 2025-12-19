@@ -3,7 +3,9 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -16,8 +18,33 @@ import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { InstitutionType } from '../institutions/entities/institution.entity';
 
+interface CacheManager {
+  get<T>(key: string): Promise<T | undefined>;
+  set<T>(key: string, value: T, ttl?: number): Promise<void>;
+  del(key: string): Promise<void>;
+}
+
 @Injectable()
 export class ProjectsService {
+  private readonly CACHE_KEYS = {
+    ALL_PROJECTS: 'projects:all',
+    PROJECT_PREFIX: 'project:',
+  };
+
+  private activeProjectsCacheKeys: Set<string> = new Set();
+
+  private getCacheKey(
+    key: string,
+    userId?: number,
+    search?: string,
+    institutionId?: number,
+  ): string {
+    if (key === this.CACHE_KEYS.ALL_PROJECTS) {
+      return `${key}:${userId || 'public'}:${search || 'none'}:${institutionId || 'none'}`;
+    }
+    return key;
+  }
+
   constructor(
     @InjectRepository(Project) private projectRepository: Repository<Project>,
     @InjectRepository(ProjectLink)
@@ -25,7 +52,20 @@ export class ProjectsService {
     @InjectRepository(ProjectHistory)
     private projectHistoryRepository: Repository<ProjectHistory>,
     private usersService: UsersService,
+    @Inject(CACHE_MANAGER) private cacheManager: CacheManager,
   ) {}
+
+  private cacheGet<T>(key: string): Promise<T | undefined> {
+    return this.cacheManager.get<T>(key);
+  }
+
+  private cacheSet<T>(key: string, value: T, ttlMs: number): Promise<void> {
+    return this.cacheManager.set<T>(key, value, ttlMs);
+  }
+
+  private cacheDel(key: string): Promise<void> {
+    return this.cacheManager.del(key);
+  }
 
   async create(createProjectDto: CreateProjectDto, user: User) {
     const fullUser = await this.usersService.getProfile(user.id);
@@ -39,14 +79,6 @@ export class ProjectsService {
             'Projects are only allowed from 7th grade',
           );
         }
-      } else {
-        // If no group assigned, maybe allow or block?
-        // "Projects are carried out from the 7th grade" implies school context.
-        // If no group, maybe they are not in school yet or data missing.
-        // Let's assume if no group, they can't create if we strictly enforce school context.
-        // But maybe they are university students?
-        // University students might not have "grade" or grade > 11.
-        // Let's assume if grade is present, check it.
       }
     }
 
@@ -73,10 +105,28 @@ export class ProjectsService {
       return link;
     });
 
-    return await this.projectRepository.save(project);
+    const savedProject = await this.projectRepository.save(project);
+
+    // Invalidate all projects cache after creation
+    await this.invalidateProjectsCache();
+
+    return savedProject;
   }
 
   async findAll(user?: User, search?: string, institutionId?: number) {
+    const cacheKey = this.getCacheKey(
+      this.CACHE_KEYS.ALL_PROJECTS,
+      user?.id,
+      search,
+      institutionId,
+    );
+
+    // Try to get from cache
+    const cachedProjects = await this.cacheGet<Project[]>(cacheKey);
+    if (cachedProjects) {
+      return cachedProjects;
+    }
+
     const query = this.projectRepository
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.links', 'links')
@@ -99,7 +149,6 @@ export class ProjectsService {
 
       if (isAdminOrStaff) {
         // Админы и сотрудники вуза видят все проекты
-        // Но могут фильтровать по учебному заведению
         if (institutionId) {
           query.andWhere('institution.id = :institutionId', { institutionId });
         }
@@ -113,52 +162,60 @@ export class ProjectsService {
           approvedStatus: ProjectStatus.APPROVED,
         };
 
-        // Пользователь видит:
-        // 1. Свои проекты (независимо от статуса и учреждения)
+        // Пользователь видит свои проекты
         conditions.push('project.author.id = :userId');
 
-        // 2. Проекты, где он является участником
+        // Пользователь видит проекты, где он участник
         conditions.push(
           '(:userId IN (SELECT "userId" FROM "projects_members_users" WHERE "projectId" = project.id))',
         );
 
-        // 3. Одобренные проекты
+        // Одобренные проекты
         if (institutionId) {
-          // Если указан institutionId, показываем одобренные проекты только этого учреждения
           conditions.push(
             '(project.status = :approvedStatus AND institution.id = :institutionId)',
           );
           parameters.institutionId = institutionId;
         } else if (fullUser?.group?.institution) {
-          // Автоматическая фильтрация по типу учреждения пользователя
-          // Пользователь видит только проекты своего типа учреждения (школа или университет)
           conditions.push(
             '(project.status = :approvedStatus AND institution.type = :institutionType)',
           );
           parameters.institutionType = fullUser.group.institution.type;
         } else {
-          // Если нет группы или учреждения, показываем все одобренные проекты
           conditions.push('project.status = :approvedStatus');
         }
 
         query.andWhere(`(${conditions.join(' OR ')})`, parameters);
       }
     } else {
-      // Публичный доступ (неавторизованные): только одобренные проекты
+      // Публичный доступ: только одобренные проекты
       query.andWhere('project.status = :status', {
         status: ProjectStatus.APPROVED,
       });
 
-      // Фильтрация по учебному заведению для неавторизованных
       if (institutionId) {
         query.andWhere('institution.id = :institutionId', { institutionId });
       }
     }
 
-    return await query.getMany();
+    const projects = await query.getMany();
+
+    // Cache the result with 5 minute TTL
+    await this.cacheSet(cacheKey, projects, 5 * 60 * 1000);
+    this.activeProjectsCacheKeys.add(cacheKey);
+
+    return projects;
   }
 
   async findOne(id: number) {
+    const cacheKey = `${this.CACHE_KEYS.PROJECT_PREFIX}${id}`;
+
+    // Try to get from cache
+    const cachedProject = await this.cacheGet<Project>(cacheKey);
+    if (cachedProject) {
+      return cachedProject;
+    }
+
     const project = await this.projectRepository.findOne({
       where: { id },
       relations: ['links', 'author', 'history', 'members'],
@@ -166,7 +223,35 @@ export class ProjectsService {
     if (!project) {
       throw new NotFoundException(`Project with ID ${id} not found`);
     }
+
+    // Cache the result with 5 minute TTL
+    await this.cacheSet(cacheKey, project, 5 * 60 * 1000);
+
     return project;
+  }
+
+  async uploadFiles(id: number, files: string[], user: User) {
+    const project = await this.findOne(id);
+
+    // Check if user is author or member
+    const isAuthor = project.author.id === user.id;
+    const isMember = project.members.some((m) => m.id === user.id);
+
+    if (!isAuthor && !isMember) {
+      throw new ForbiddenException('Only author or members can upload files');
+    }
+
+    // Track history
+    const history = new ProjectHistory();
+    history.project = project;
+    history.changedBy = user;
+    history.changes = { filesUploaded: files };
+    await this.projectHistoryRepository.save(history);
+
+    // Invalidate cache for this project
+    await this.invalidateProjectCache(id);
+
+    return { success: true, filesCount: files.length };
   }
 
   async generateInvitation(id: number, user: User) {
@@ -177,6 +262,10 @@ export class ProjectsService {
     const token = uuidv4();
     project.invitationToken = token;
     await this.projectRepository.save(project);
+
+    // Invalidate cache for this project
+    await this.invalidateProjectCache(id);
+
     return { token };
   }
 
@@ -216,8 +305,13 @@ export class ProjectsService {
     }
 
     project.members.push(user);
-    await this.projectRepository.save(project);
-    return project;
+    const savedProject = await this.projectRepository.save(project);
+
+    // Invalidate cache for this project and all projects
+    await this.invalidateProjectCache(project.id);
+    await this.invalidateProjectsCache();
+
+    return savedProject;
   }
 
   async update(id: number, updateProjectDto: UpdateProjectDto, user: User) {
@@ -236,11 +330,7 @@ export class ProjectsService {
       project.description = updateProjectDto.description;
     if (updateProjectDto.status) project.status = updateProjectDto.status;
 
-    // Update links if provided (replace strategy for simplicity, or append? Requirement says "update project". Usually implies replacing the list or specific operations. Let's replace for now as it's easier to manage via DTO)
     if (updateProjectDto.links) {
-      // Remove old links? Or just add new ones?
-      // If we want to support editing existing links, we need IDs in DTO.
-      // Given the simple DTO, let's assume we replace the links.
       await this.projectLinkRepository.delete({ project: { id: project.id } });
       project.links = updateProjectDto.links.map((linkDto) => {
         const link = new ProjectLink();
@@ -250,11 +340,43 @@ export class ProjectsService {
       });
     }
 
-    return await this.projectRepository.save(project);
+    const updatedProject = await this.projectRepository.save(project);
+
+    // Invalidate cache for this specific project
+    await this.invalidateProjectCache(id);
+    // Invalidate all projects cache
+    await this.invalidateProjectsCache();
+
+    return updatedProject;
   }
 
   async remove(id: number) {
     const project = await this.findOne(id);
-    return await this.projectRepository.remove(project);
+    const result = await this.projectRepository.remove(project);
+
+    // Invalidate cache for this specific project
+    await this.invalidateProjectCache(id);
+    // Invalidate all projects cache
+    await this.invalidateProjectsCache();
+
+    return result;
+  }
+
+  /**
+   * Invalidate cache for a specific project
+   */
+  private async invalidateProjectCache(id: number): Promise<void> {
+    const cacheKey = `${this.CACHE_KEYS.PROJECT_PREFIX}${id}`;
+    await this.cacheDel(cacheKey);
+  }
+
+  /**
+   * Invalidate all projects cache (all variations with different filters)
+   */
+  private async invalidateProjectsCache(): Promise<void> {
+    for (const key of this.activeProjectsCacheKeys) {
+      await this.cacheDel(key);
+    }
+    this.activeProjectsCacheKeys.clear();
   }
 }

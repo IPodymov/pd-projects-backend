@@ -83,4 +83,14 @@ export class ProjectsController {
   ) {
     return this.projectsService.joinProject(token, req.user);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/files')
+  uploadFiles(
+    @Param('id') id: string,
+    @Body() files: { files: string[] },
+    @Req() req: Request & { user: User },
+  ) {
+    return this.projectsService.uploadFiles(+id, files.files, req.user);
+  }
 }
