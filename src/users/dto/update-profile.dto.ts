@@ -1,4 +1,5 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
+import { EducationLevel } from '../entities/user.entity';
 
 export class UpdateProfileDto {
   @IsString()
@@ -16,4 +17,8 @@ export class UpdateProfileDto {
   @IsNumber()
   @IsOptional()
   readonly groupId?: number;
+
+  @IsEnum(EducationLevel)
+  @IsOptional()
+  readonly educationLevel?: EducationLevel;
 }

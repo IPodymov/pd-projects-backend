@@ -1,4 +1,5 @@
-import { IsEmail, IsOptional, IsString, Length } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString, Length } from 'class-validator';
+import { EducationLevel } from '../entities/user.entity';
 
 export class CreateUserDto {
   @IsString({ message: 'Must be a string' })
@@ -20,4 +21,8 @@ export class CreateUserDto {
   @IsString()
   @IsOptional()
   readonly middleName?: string;
+
+  @IsEnum(EducationLevel)
+  @IsOptional()
+  readonly educationLevel?: EducationLevel;
 }

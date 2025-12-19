@@ -28,6 +28,9 @@ export class UsersService {
     if (role) {
       user.roles = [role];
     }
+    if (dto.educationLevel) {
+      user.educationLevel = dto.educationLevel;
+    }
     await this.userRepository.save(user);
     return user;
   }
@@ -87,6 +90,7 @@ export class UsersService {
     if (dto.firstName) user.firstName = dto.firstName;
     if (dto.lastName) user.lastName = dto.lastName;
     if (dto.middleName) user.middleName = dto.middleName;
+    if (dto.educationLevel) user.educationLevel = dto.educationLevel;
 
     await this.userRepository.save(user);
     return this.getProfile(userId);

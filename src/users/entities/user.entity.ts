@@ -11,6 +11,11 @@ import { Role } from '../../roles/entities/role.entity';
 import { Project } from '../../projects/entities/project.entity';
 import { StudentGroup } from '../../student-groups/entities/student-group.entity';
 
+export enum EducationLevel {
+  SCHOOL = 'SCHOOL',
+  UNIVERSITY = 'UNIVERSITY',
+}
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn()
@@ -30,6 +35,9 @@ export class User {
 
   @Column({ nullable: true })
   middleName: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  educationLevel: EducationLevel | null;
 
   @Column({ nullable: true, type: 'varchar' })
   resetPasswordToken: string | null;
