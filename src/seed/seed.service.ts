@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { User } from '../users/entities/user.entity';
+import { User, EducationLevel } from '../users/entities/user.entity';
 import { Role } from '../roles/entities/role.entity';
 import {
   Institution,
@@ -61,6 +61,16 @@ export class SeedService {
       });
     }
 
+    let schoolStudentRole = await this.roleRepository.findOne({
+      where: { value: 'SCHOOL_STUDENT' },
+    });
+    if (!schoolStudentRole) {
+      schoolStudentRole = await this.roleRepository.save({
+        value: 'SCHOOL_STUDENT',
+        description: 'Школьник',
+      });
+    }
+
     const password = await bcrypt.hash('password123', 5);
 
     // Admin
@@ -109,6 +119,7 @@ export class SeedService {
         firstName: 'Student',
         lastName: 'User',
         roles: [studentRole],
+        educationLevel: EducationLevel.UNIVERSITY,
       });
       await this.userRepository.save(student);
       console.log('Seeded Student user');
@@ -125,7 +136,8 @@ export class SeedService {
         password: password,
         firstName: 'School',
         lastName: 'Student',
-        roles: [studentRole],
+        roles: [schoolStudentRole],
+        educationLevel: EducationLevel.SCHOOL,
       });
       await this.userRepository.save(schoolStudent);
       console.log('Seeded School Student user');

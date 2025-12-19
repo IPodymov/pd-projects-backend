@@ -32,10 +32,13 @@ Backend для системы управления проектами.
 npm run seed
 ```
 
-При этом создаются следующие пользователи:
+Создаются роли: ADMIN, UNIVERSITY_STAFF, STUDENT, SCHOOL_STUDENT.
 
-- **Admin**: `admin@example.com` / `password123`
-- **Сотрудник**: `staff@example.com` / `password123`
-- **Студент**: `student@example.com` / `password123`
+Создаются пользователи:
 
-А также тестовый вуз, группа и проекты.
+- **Админ**: `admin@example.com` / `password123`
+- **Сотрудник вуза**: `staff@example.com` / `password123`
+- **Студент (вуз)**: `student@example.com` / `password123`
+- **Школьник**: `school_student@example.com` / `password123`
+
+Также создаются тестовые учреждения (вуз и школа), группы, и по одному проекту от студента и школьника.

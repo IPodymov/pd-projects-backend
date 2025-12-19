@@ -15,6 +15,7 @@ export class RolesService implements OnModuleInit {
     const roles = [
       { value: 'ADMIN', description: 'Администратор' },
       { value: 'STUDENT', description: 'Учащийся' },
+      { value: 'SCHOOL_STUDENT', description: 'Школьник' },
       { value: 'UNIVERSITY_STAFF', description: 'Сотрудник вуза' },
     ];
 

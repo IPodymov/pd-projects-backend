@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
   Inject,
@@ -8,7 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './entities/user.entity';
+import { User, EducationLevel } from './entities/user.entity';
 import { RolesService } from '../roles/roles.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { StudentGroupsService } from '../student-groups/student-groups.service';
@@ -24,13 +25,21 @@ export class UsersService {
 
   async createUser(dto: CreateUserDto) {
     const user = this.userRepository.create(dto);
-    const role = await this.rolesService.getRoleByValue('STUDENT');
+    const preferredRoleValue =
+      dto.educationLevel === EducationLevel.SCHOOL
+        ? 'SCHOOL_STUDENT'
+        : 'STUDENT';
+
+    const role = await this.rolesService.getRoleByValue(preferredRoleValue);
     if (role) {
       user.roles = [role];
     }
-    if (dto.educationLevel) {
-      user.educationLevel = dto.educationLevel;
+
+    const educationLevel = dto.educationLevel;
+    if (educationLevel !== undefined) {
+      user.educationLevel = educationLevel;
     }
+
     await this.userRepository.save(user);
     return user;
   }
@@ -90,7 +99,10 @@ export class UsersService {
     if (dto.firstName) user.firstName = dto.firstName;
     if (dto.lastName) user.lastName = dto.lastName;
     if (dto.middleName) user.middleName = dto.middleName;
-    if (dto.educationLevel) user.educationLevel = dto.educationLevel;
+    const educationLevel = dto.educationLevel;
+    if (educationLevel !== undefined) {
+      user.educationLevel = educationLevel;
+    }
 
     await this.userRepository.save(user);
     return this.getProfile(userId);

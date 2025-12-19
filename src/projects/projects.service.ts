@@ -71,7 +71,9 @@ export class ProjectsService {
     const fullUser = await this.usersService.getProfile(user.id);
 
     // Check if student is allowed to create project (Grade >= 7)
-    const isStudent = user.roles.some((role) => role.value === 'STUDENT');
+    const isStudent = user.roles.some((role) =>
+      ['STUDENT', 'SCHOOL_STUDENT'].includes(role.value),
+    );
     if (isStudent) {
       if (fullUser && fullUser.group) {
         if (fullUser.group.grade && fullUser.group.grade < 7) {
