@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   BadRequestException,
   Inject,
+  Logger,
 } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
@@ -21,6 +22,7 @@ import { InstitutionType } from '../institutions/entities/institution.entity';
 
 @Injectable()
 export class ProjectsService {
+  private readonly logger = new Logger(ProjectsService.name);
   private readonly CACHE_KEYS = {
     ALL_PROJECTS: 'projects:all',
     PROJECT_PREFIX: 'project:',
@@ -390,18 +392,21 @@ export class ProjectsService {
       const keys =
         (await this.cacheGet<string[]>(this.CACHE_KEYS.PROJECTS_LIST_KEYS)) ||
         [];
-      if (!keys.includes(key)) {
-        keys.push(key);
-        // Store the keys list with a longer TTL (10 minutes)
+      const keysSet = new Set(keys);
+
+      if (!keysSet.has(key)) {
+        keysSet.add(key);
+        // Store the keys list with the same TTL as cache entries (5 minutes)
+        // to ensure we don't try to invalidate expired keys
         await this.cacheSet(
           this.CACHE_KEYS.PROJECTS_LIST_KEYS,
-          keys,
-          10 * 60 * 1000,
+          Array.from(keysSet),
+          5 * 60 * 1000,
         );
       }
     } catch (error) {
       // If tracking fails, just log and continue
-      console.warn('Failed to track projects list key:', error);
+      this.logger.warn('Failed to track projects list key:', error);
     }
   }
 
@@ -422,7 +427,7 @@ export class ProjectsService {
       // Clear the tracking key itself
       await this.cacheDel(this.CACHE_KEYS.PROJECTS_LIST_KEYS);
     } catch (error) {
-      console.warn('Failed to invalidate projects cache:', error);
+      this.logger.warn('Failed to invalidate projects cache:', error);
     }
   }
 }
