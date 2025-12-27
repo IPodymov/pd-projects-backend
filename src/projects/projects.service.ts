@@ -155,8 +155,6 @@ export class ProjectsService {
         }
       } else {
         // Обычные пользователи (студенты)
-        const fullUser = await this.usersService.getProfile(user.id);
-
         const conditions: string[] = [];
         const parameters: Record<string, any> = {
           userId: user.id,
@@ -171,17 +169,29 @@ export class ProjectsService {
           '(:userId IN (SELECT "userId" FROM "projects_members_users" WHERE "projectId" = project.id))',
         );
 
+        const isSchoolStudent = user.roles.some(
+          (role) => role.value === 'SCHOOL_STUDENT',
+        );
+        const isUniversityStudent = user.roles.some(
+          (role) => role.value === 'STUDENT',
+        );
+
         // Одобренные проекты
         if (institutionId) {
           conditions.push(
             '(project.status = :approvedStatus AND institution.id = :institutionId)',
           );
           parameters.institutionId = institutionId;
-        } else if (fullUser?.group?.institution) {
+        } else if (isSchoolStudent) {
           conditions.push(
             '(project.status = :approvedStatus AND institution.type = :institutionType)',
           );
-          parameters.institutionType = fullUser.group.institution.type;
+          parameters.institutionType = InstitutionType.SCHOOL;
+        } else if (isUniversityStudent) {
+          conditions.push(
+            '(project.status = :approvedStatus AND institution.type = :institutionType)',
+          );
+          parameters.institutionType = InstitutionType.UNIVERSITY;
         } else {
           conditions.push('project.status = :approvedStatus');
         }
