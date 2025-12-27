@@ -25,13 +25,36 @@ import { SeedModule } from './seed/seed.module';
       isGlobal: true,
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
-        return {
-          stores: [
-            new Keyv({
-              store: new KeyvRedis(configService.get('REDIS_URL')),
+        const redisUrl = configService.get<string>('REDIS_URL');
+
+        // If Redis URL is configured, use Redis; otherwise fallback to in-memory
+        if (redisUrl) {
+          try {
+            const redisKeyv = new Keyv({
+              store: new KeyvRedis(redisUrl),
+              namespace: 'pd-projects',
               ttl: 5 * 60 * 1000,
-            }),
-          ],
+            });
+
+            return {
+              stores: [redisKeyv],
+            };
+          } catch (error) {
+            console.warn(
+              'Failed to connect to Redis, falling back to in-memory cache:',
+              error,
+            );
+          }
+        }
+
+        // Default to in-memory cache
+        const memoryKeyv = new Keyv({
+          namespace: 'pd-projects',
+          ttl: 5 * 60 * 1000,
+        });
+
+        return {
+          stores: [memoryKeyv],
         };
       },
       inject: [ConfigService],
