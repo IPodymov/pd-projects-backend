@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CacheModule } from '@nestjs/cache-manager';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import Keyv from 'keyv';
+import KeyvRedis from '@keyv/redis';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { RolesModule } from './roles/roles.module';
@@ -19,9 +21,20 @@ import { SeedModule } from './seed/seed.module';
     ConfigModule.forRoot({
       envFilePath: '.env',
     }),
-    CacheModule.register({
+    CacheModule.registerAsync({
       isGlobal: true,
-      ttl: 5 * 60 * 1000, // 5 minutes default TTL
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => {
+        return {
+          stores: [
+            new Keyv({
+              store: new KeyvRedis(configService.get('REDIS_URL')),
+              ttl: 5 * 60 * 1000,
+            }),
+          ],
+        };
+      },
+      inject: [ConfigService],
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',

@@ -6,6 +6,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -17,12 +18,6 @@ import { ProjectHistory } from './entities/project-history.entity';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { InstitutionType } from '../institutions/entities/institution.entity';
-
-interface CacheManager {
-  get<T>(key: string): Promise<T | undefined>;
-  set<T>(key: string, value: T, ttl?: number): Promise<void>;
-  del(key: string): Promise<void>;
-}
 
 @Injectable()
 export class ProjectsService {
@@ -52,19 +47,23 @@ export class ProjectsService {
     @InjectRepository(ProjectHistory)
     private projectHistoryRepository: Repository<ProjectHistory>,
     private usersService: UsersService,
-    @Inject(CACHE_MANAGER) private cacheManager: CacheManager,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   private cacheGet<T>(key: string): Promise<T | undefined> {
     return this.cacheManager.get<T>(key);
   }
 
-  private cacheSet<T>(key: string, value: T, ttlMs: number): Promise<void> {
-    return this.cacheManager.set<T>(key, value, ttlMs);
+  private async cacheSet<T>(
+    key: string,
+    value: T,
+    ttlMs: number,
+  ): Promise<void> {
+    await this.cacheManager.set(key, value, ttlMs);
   }
 
-  private cacheDel(key: string): Promise<void> {
-    return this.cacheManager.del(key);
+  private async cacheDel(key: string): Promise<void> {
+    await this.cacheManager.del(key);
   }
 
   async create(createProjectDto: CreateProjectDto, user: User) {

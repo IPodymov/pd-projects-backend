@@ -17,7 +17,7 @@ export class AuthController {
     const response = await this.authService.login(userDto);
     res.cookie('Authentication', response.token, {
       httpOnly: true,
-      secure: true, // Should be true in production
+      secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
     return response;
@@ -31,7 +31,7 @@ export class AuthController {
     const response = await this.authService.registration(userDto);
     res.cookie('Authentication', response.token, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000,
     });
     return response;
