@@ -392,21 +392,21 @@ export class ProjectsService {
       const keys =
         (await this.cacheGet<string[]>(this.CACHE_KEYS.PROJECTS_LIST_KEYS)) ||
         [];
-      const keysSet = new Set(keys);
 
-      if (!keysSet.has(key)) {
-        keysSet.add(key);
+      // Check if key already exists before adding
+      if (!keys.includes(key)) {
+        keys.push(key);
         // Store the keys list with the same TTL as cache entries (5 minutes)
         // to ensure we don't try to invalidate expired keys
         await this.cacheSet(
           this.CACHE_KEYS.PROJECTS_LIST_KEYS,
-          Array.from(keysSet),
+          keys,
           5 * 60 * 1000,
         );
       }
     } catch (error) {
       // If tracking fails, just log and continue
-      this.logger.warn('Failed to track projects list key:', error);
+      this.logger.warn(`Failed to track projects list key '${key}':`, error);
     }
   }
 
@@ -426,6 +426,10 @@ export class ProjectsService {
 
       // Clear the tracking key itself
       await this.cacheDel(this.CACHE_KEYS.PROJECTS_LIST_KEYS);
+
+      this.logger.debug(
+        `Invalidated ${keys.length} project list cache entries`,
+      );
     } catch (error) {
       this.logger.warn('Failed to invalidate projects cache:', error);
     }
