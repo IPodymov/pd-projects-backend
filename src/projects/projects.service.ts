@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   BadRequestException,
   Inject,
+  Logger,
 } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
@@ -21,12 +22,12 @@ import { InstitutionType } from '../institutions/entities/institution.entity';
 
 @Injectable()
 export class ProjectsService {
+  private readonly logger = new Logger(ProjectsService.name);
   private readonly CACHE_KEYS = {
     ALL_PROJECTS: 'projects:all',
     PROJECT_PREFIX: 'project:',
+    PROJECTS_LIST_KEYS: 'projects:list:keys', // Track all list cache keys
   };
-
-  private activeProjectsCacheKeys: Set<string> = new Set();
 
   private getCacheKey(
     key: string,
@@ -213,7 +214,9 @@ export class ProjectsService {
 
     // Cache the result with 5 minute TTL
     await this.cacheSet(cacheKey, projects, 5 * 60 * 1000);
-    this.activeProjectsCacheKeys.add(cacheKey);
+
+    // Track this key for later invalidation
+    await this.trackProjectsListKey(cacheKey);
 
     return projects;
   }
@@ -382,12 +385,53 @@ export class ProjectsService {
   }
 
   /**
+   * Track a projects list cache key for later invalidation
+   */
+  private async trackProjectsListKey(key: string): Promise<void> {
+    try {
+      const keys =
+        (await this.cacheGet<string[]>(this.CACHE_KEYS.PROJECTS_LIST_KEYS)) ||
+        [];
+
+      // Check if key already exists before adding
+      if (!keys.includes(key)) {
+        keys.push(key);
+        // Store the keys list with the same TTL as cache entries (5 minutes)
+        // to ensure we don't try to invalidate expired keys
+        await this.cacheSet(
+          this.CACHE_KEYS.PROJECTS_LIST_KEYS,
+          keys,
+          5 * 60 * 1000,
+        );
+      }
+    } catch (error) {
+      // If tracking fails, just log and continue
+      this.logger.warn(`Failed to track projects list key '${key}':`, error);
+    }
+  }
+
+  /**
    * Invalidate all projects cache (all variations with different filters)
    */
   private async invalidateProjectsCache(): Promise<void> {
-    for (const key of this.activeProjectsCacheKeys) {
-      await this.cacheDel(key);
+    try {
+      const keys =
+        (await this.cacheGet<string[]>(this.CACHE_KEYS.PROJECTS_LIST_KEYS)) ||
+        [];
+
+      // Delete all tracked list cache keys
+      for (const key of keys) {
+        await this.cacheDel(key);
+      }
+
+      // Clear the tracking key itself
+      await this.cacheDel(this.CACHE_KEYS.PROJECTS_LIST_KEYS);
+
+      this.logger.debug(
+        `Invalidated ${keys.length} project list cache entries`,
+      );
+    } catch (error) {
+      this.logger.warn('Failed to invalidate projects cache:', error);
     }
-    this.activeProjectsCacheKeys.clear();
   }
 }
