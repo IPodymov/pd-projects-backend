@@ -3,11 +3,8 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
-  Inject,
   Logger,
 } from '@nestjs/common';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import type { Cache } from 'cache-manager';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -23,23 +20,6 @@ import { InstitutionType } from '../institutions/entities/institution.entity';
 @Injectable()
 export class ProjectsService {
   private readonly logger = new Logger(ProjectsService.name);
-  private readonly CACHE_KEYS = {
-    ALL_PROJECTS: 'projects:all',
-    PROJECT_PREFIX: 'project:',
-    PROJECTS_LIST_KEYS: 'projects:list:keys', // Track all list cache keys
-  };
-
-  private getCacheKey(
-    key: string,
-    userId?: number,
-    search?: string,
-    institutionId?: number,
-  ): string {
-    if (key === this.CACHE_KEYS.ALL_PROJECTS) {
-      return `${key}:${userId || 'public'}:${search || 'none'}:${institutionId || 'none'}`;
-    }
-    return key;
-  }
 
   constructor(
     @InjectRepository(Project) private projectRepository: Repository<Project>,
@@ -48,24 +28,7 @@ export class ProjectsService {
     @InjectRepository(ProjectHistory)
     private projectHistoryRepository: Repository<ProjectHistory>,
     private usersService: UsersService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
-
-  private cacheGet<T>(key: string): Promise<T | undefined> {
-    return this.cacheManager.get<T>(key);
-  }
-
-  private async cacheSet<T>(
-    key: string,
-    value: T,
-    ttlMs: number,
-  ): Promise<void> {
-    await this.cacheManager.set(key, value, ttlMs);
-  }
-
-  private async cacheDel(key: string): Promise<void> {
-    await this.cacheManager.del(key);
-  }
 
   async create(createProjectDto: CreateProjectDto, user: User) {
     const fullUser = await this.usersService.getProfile(user.id);
@@ -107,28 +70,10 @@ export class ProjectsService {
       return link;
     });
 
-    const savedProject = await this.projectRepository.save(project);
-
-    // Invalidate all projects cache after creation
-    await this.invalidateProjectsCache();
-
-    return savedProject;
+    return this.projectRepository.save(project);
   }
 
   async findAll(user?: User, search?: string, institutionId?: number) {
-    const cacheKey = this.getCacheKey(
-      this.CACHE_KEYS.ALL_PROJECTS,
-      user?.id,
-      search,
-      institutionId,
-    );
-
-    // Try to get from cache
-    const cachedProjects = await this.cacheGet<Project[]>(cacheKey);
-    if (cachedProjects) {
-      return cachedProjects;
-    }
-
     const query = this.projectRepository
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.links', 'links')
@@ -210,26 +155,10 @@ export class ProjectsService {
       }
     }
 
-    const projects = await query.getMany();
-
-    // Cache the result with 5 minute TTL
-    await this.cacheSet(cacheKey, projects, 5 * 60 * 1000);
-
-    // Track this key for later invalidation
-    await this.trackProjectsListKey(cacheKey);
-
-    return projects;
+    return query.getMany();
   }
 
   async findOne(id: number) {
-    const cacheKey = `${this.CACHE_KEYS.PROJECT_PREFIX}${id}`;
-
-    // Try to get from cache
-    const cachedProject = await this.cacheGet<Project>(cacheKey);
-    if (cachedProject) {
-      return cachedProject;
-    }
-
     const project = await this.projectRepository.findOne({
       where: { id },
       relations: ['links', 'author', 'history', 'members'],
@@ -237,9 +166,6 @@ export class ProjectsService {
     if (!project) {
       throw new NotFoundException(`Project with ID ${id} not found`);
     }
-
-    // Cache the result with 5 minute TTL
-    await this.cacheSet(cacheKey, project, 5 * 60 * 1000);
 
     return project;
   }
@@ -262,9 +188,6 @@ export class ProjectsService {
     history.changes = { filesUploaded: files };
     await this.projectHistoryRepository.save(history);
 
-    // Invalidate cache for this project
-    await this.invalidateProjectCache(id);
-
     return { success: true, filesCount: files.length };
   }
 
@@ -276,9 +199,6 @@ export class ProjectsService {
     const token = uuidv4();
     project.invitationToken = token;
     await this.projectRepository.save(project);
-
-    // Invalidate cache for this project
-    await this.invalidateProjectCache(id);
 
     return { token };
   }
@@ -319,13 +239,7 @@ export class ProjectsService {
     }
 
     project.members.push(user);
-    const savedProject = await this.projectRepository.save(project);
-
-    // Invalidate cache for this project and all projects
-    await this.invalidateProjectCache(project.id);
-    await this.invalidateProjectsCache();
-
-    return savedProject;
+    return this.projectRepository.save(project);
   }
 
   async update(id: number, updateProjectDto: UpdateProjectDto, user: User) {
@@ -354,84 +268,11 @@ export class ProjectsService {
       });
     }
 
-    const updatedProject = await this.projectRepository.save(project);
-
-    // Invalidate cache for this specific project
-    await this.invalidateProjectCache(id);
-    // Invalidate all projects cache
-    await this.invalidateProjectsCache();
-
-    return updatedProject;
+    return this.projectRepository.save(project);
   }
 
   async remove(id: number) {
     const project = await this.findOne(id);
-    const result = await this.projectRepository.remove(project);
-
-    // Invalidate cache for this specific project
-    await this.invalidateProjectCache(id);
-    // Invalidate all projects cache
-    await this.invalidateProjectsCache();
-
-    return result;
-  }
-
-  /**
-   * Invalidate cache for a specific project
-   */
-  private async invalidateProjectCache(id: number): Promise<void> {
-    const cacheKey = `${this.CACHE_KEYS.PROJECT_PREFIX}${id}`;
-    await this.cacheDel(cacheKey);
-  }
-
-  /**
-   * Track a projects list cache key for later invalidation
-   */
-  private async trackProjectsListKey(key: string): Promise<void> {
-    try {
-      const keys =
-        (await this.cacheGet<string[]>(this.CACHE_KEYS.PROJECTS_LIST_KEYS)) ||
-        [];
-
-      // Check if key already exists before adding
-      if (!keys.includes(key)) {
-        keys.push(key);
-        // Store the keys list with the same TTL as cache entries (5 minutes)
-        // to ensure we don't try to invalidate expired keys
-        await this.cacheSet(
-          this.CACHE_KEYS.PROJECTS_LIST_KEYS,
-          keys,
-          5 * 60 * 1000,
-        );
-      }
-    } catch (error) {
-      // If tracking fails, just log and continue
-      this.logger.warn(`Failed to track projects list key '${key}':`, error);
-    }
-  }
-
-  /**
-   * Invalidate all projects cache (all variations with different filters)
-   */
-  private async invalidateProjectsCache(): Promise<void> {
-    try {
-      const keys =
-        (await this.cacheGet<string[]>(this.CACHE_KEYS.PROJECTS_LIST_KEYS)) ||
-        [];
-
-      // Delete all tracked list cache keys
-      for (const key of keys) {
-        await this.cacheDel(key);
-      }
-
-      // Clear the tracking key itself
-      await this.cacheDel(this.CACHE_KEYS.PROJECTS_LIST_KEYS);
-
-      this.logger.debug(
-        `Invalidated ${keys.length} project list cache entries`,
-      );
-    } catch (error) {
-      this.logger.warn('Failed to invalidate projects cache:', error);
-    }
+    return this.projectRepository.remove(project);
   }
 }
